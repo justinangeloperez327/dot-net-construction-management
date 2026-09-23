@@ -1,0 +1,105 @@
+@page "/admin/users/create"
+@attribute [Authorize(Policy = Permissions.Users.Create)]
+@inject IUserAdministration Users
+@inject IRoleAdministration Roles
+@inject NavigationManager Navigation
+
+<PageTitle>Create user</PageTitle>
+
+<h1>Create user</h1>
+
+@if (_errors.Count > 0)
+{
+    <div class="validation-error" role="alert">
+        @foreach (var error in _errors)
+        {
+            <div>@error</div>
+        }
+    </div>
+}
+
+<EditForm Model="_model" OnValidSubmit="CreateAsync" class="form-grid">
+    <DataAnnotationsValidator />
+
+    <label for="email">Email</label>
+    <InputText id="email"
+               type="email"
+               @bind-Value="_model.Email" />
+
+    <label for="password">Temporary password</label>
+    <InputText id="password"
+               type="password"
+               @bind-Value="_model.Password" />
+
+    <fieldset>
+        <legend>Roles</legend>
+
+        @foreach (var role in _roles)
+        {
+            <label class="checkbox-row">
+                <input type="checkbox"
+                       checked="@_selectedRoles.Contains(role.Name)"
+                       @onchange="eventArgs => ToggleRole(role.Name, eventArgs.Value)" />
+                @role.Name
+            </label>
+        }
+    </fieldset>
+
+    <button type="submit">Create user</button>
+</EditForm>
+
+@code {
+    private readonly CreateUserModel _model = new();
+    private readonly HashSet<string> _selectedRoles =
+        new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<string> _errors = [];
+    private IReadOnlyList<RoleSummary> _roles = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _roles = await Roles.ListAsync();
+    }
+
+    private async Task CreateAsync()
+    {
+        _errors.Clear();
+
+        var result = await Users.CreateAsync(
+            new CreateUserRequest(
+                _model.Email,
+                _model.Password,
+                _selectedRoles.ToArray()));
+
+        if (result.Succeeded && result.UserId is Guid userId)
+        {
+            Navigation.NavigateTo($"/admin/users/{userId}");
+            return;
+        }
+
+        _errors.AddRange(result.Errors);
+    }
+
+    private void ToggleRole(
+        string role,
+        object? value)
+    {
+        if (value is true)
+        {
+            _selectedRoles.Add(role);
+        }
+        else
+        {
+            _selectedRoles.Remove(role);
+        }
+    }
+
+    private sealed class CreateUserModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Password { get; set; } = string.Empty;
+    }
+}

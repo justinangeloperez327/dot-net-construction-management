@@ -1,0 +1,203 @@
+@page "/admin/users/{Id:guid}"
+@attribute [Authorize(Policy = Permissions.Users.Update)]
+@inject IUserAdministration Users
+@inject IRoleAdministration Roles
+
+<PageTitle>Manage user</PageTitle>
+
+@if (_user is null)
+{
+    <h1>User not found</h1>
+}
+else
+{
+    <h1>Manage user</h1>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_message))
+    {
+        <p class="success-message">@_message</p>
+    }
+
+    <section class="form-section">
+        <h2>Account</h2>
+
+        <EditForm Model="_emailModel" OnValidSubmit="UpdateEmailAsync" class="form-grid">
+            <DataAnnotationsValidator />
+
+            <label for="email">Email</label>
+            <InputText id="email"
+                       type="email"
+                       @bind-Value="_emailModel.Email" />
+
+            <AuthorizeView Policy="@Permissions.Users.Update">
+                <Authorized>
+                    <button type="submit">Save email</button>
+                </Authorized>
+            </AuthorizeView>
+        </EditForm>
+
+        <AuthorizeView Policy="@Permissions.Users.SetActive">
+            <Authorized>
+                <button type="button"
+                        class="secondary-button"
+                        @onclick="ToggleActiveAsync">
+                    @(_user.IsActive ? "Deactivate user" : "Activate user")
+                </button>
+            </Authorized>
+        </AuthorizeView>
+    </section>
+
+    <AuthorizeView Policy="@Permissions.Users.ManageRoles">
+        <Authorized>
+            <section class="form-section">
+                <h2>Roles</h2>
+
+                @foreach (var role in _roles)
+                {
+                    <label class="checkbox-row">
+                        <input type="checkbox"
+                               checked="@_selectedRoles.Contains(role.Name)"
+                               @onchange="eventArgs => ToggleRole(role.Name, eventArgs.Value)" />
+                        @role.Name
+                    </label>
+                }
+
+                <button type="button"
+                        @onclick="SaveRolesAsync">
+                    Save roles
+                </button>
+            </section>
+        </Authorized>
+    </AuthorizeView>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private UserDetails? _user;
+    private IReadOnlyList<RoleSummary> _roles = [];
+    private readonly HashSet<string> _selectedRoles =
+        new(StringComparer.OrdinalIgnoreCase);
+    private readonly EmailModel _emailModel = new();
+    private readonly List<string> _errors = [];
+    private string? _message;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _user = await Users.GetAsync(Id);
+        _roles = await Roles.ListAsync();
+
+        _selectedRoles.Clear();
+
+        if (_user is null)
+        {
+            return;
+        }
+
+        _emailModel.Email = _user.Email;
+
+        foreach (var role in _user.Roles)
+        {
+            _selectedRoles.Add(role);
+        }
+    }
+
+    private async Task UpdateEmailAsync()
+    {
+        ClearFeedback();
+
+        var result = await Users.UpdateAsync(
+            Id,
+            new UpdateUserRequest(_emailModel.Email));
+
+        await HandleResultAsync(result, "Email updated.");
+    }
+
+    private async Task ToggleActiveAsync()
+    {
+        if (_user is null)
+        {
+            return;
+        }
+
+        ClearFeedback();
+
+        var result = await Users.SetActiveAsync(
+            Id,
+            !_user.IsActive);
+
+        await HandleResultAsync(
+            result,
+            _user.IsActive
+                ? "User deactivated."
+                : "User activated.");
+    }
+
+    private async Task SaveRolesAsync()
+    {
+        ClearFeedback();
+
+        var result = await Users.SetRolesAsync(
+            Id,
+            _selectedRoles.ToArray());
+
+        await HandleResultAsync(result, "Roles updated.");
+    }
+
+    private async Task HandleResultAsync(
+        UserActionResult result,
+        string message)
+    {
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        _message = message;
+        await LoadAsync();
+    }
+
+    private void ToggleRole(
+        string role,
+        object? value)
+    {
+        if (value is true)
+        {
+            _selectedRoles.Add(role);
+        }
+        else
+        {
+            _selectedRoles.Remove(role);
+        }
+    }
+
+    private void ClearFeedback()
+    {
+        _errors.Clear();
+        _message = null;
+    }
+
+    private sealed class EmailModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.EmailAddress]
+        public string Email { get; set; } = string.Empty;
+    }
+}

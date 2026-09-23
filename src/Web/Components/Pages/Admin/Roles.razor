@@ -1,0 +1,107 @@
+@page "/admin/roles"
+@attribute [Authorize(Policy = Permissions.Roles.View)]
+@inject IRoleAdministration Roles
+@inject NavigationManager Navigation
+
+<PageTitle>Roles</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <h1>Roles</h1>
+        <p>Group permissions into reusable access profiles.</p>
+    </div>
+</div>
+
+<AuthorizeView Policy="@Permissions.Roles.Create">
+    <Authorized>
+        <section class="form-section">
+            <h2>Create role</h2>
+
+            @if (_errors.Count > 0)
+            {
+                <div class="validation-error" role="alert">
+                    @foreach (var error in _errors)
+                    {
+                        <div>@error</div>
+                    }
+                </div>
+            }
+
+            <EditForm Model="_model" OnValidSubmit="CreateAsync" class="inline-form">
+                <DataAnnotationsValidator />
+
+                <InputText aria-label="Role name"
+                           placeholder="Role name"
+                           @bind-Value="_model.Name" />
+
+                <button type="submit">Create</button>
+            </EditForm>
+        </section>
+    </Authorized>
+</AuthorizeView>
+
+@if (_roles is null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Role</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var role in _roles)
+            {
+                <tr>
+                    <td>@role.Name</td>
+                    <td>
+                        <a href="@($"/admin/roles/{role.Id}")">
+                            Manage
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<RoleSummary>? _roles;
+    private readonly CreateRoleModel _model = new();
+    private readonly List<string> _errors = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private async Task CreateAsync()
+    {
+        _errors.Clear();
+
+        var result = await Roles.CreateAsync(_model.Name);
+
+        if (result.Succeeded && result.RoleId is Guid roleId)
+        {
+            Navigation.NavigateTo($"/admin/roles/{roleId}");
+            return;
+        }
+
+        _errors.AddRange(result.Errors);
+    }
+
+    private async Task ReloadAsync()
+    {
+        _roles = await Roles.ListAsync();
+    }
+
+    private sealed class CreateRoleModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Name { get; set; } = string.Empty;
+    }
+}

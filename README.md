@@ -24,21 +24,21 @@ Infrastructure may implement interfaces owned by Application. Domain must not de
 
 ## Current milestone
 
-**Group 3 — Authentication**
+**Group 4 — Users, roles, and permissions**
 
-Groups 1 and 2 established the Clean Architecture and persistence foundations. Group 3 adds:
+The application now includes:
 
-- ASP.NET Core Identity backed by SQL Server
-- secure application-cookie authentication
-- sign-in and sign-out flows
-- protected Blazor routes
-- current-user abstraction for Application
-- failed-login lockout
-- access-denied handling
-- initial Identity database migration
-- CI check for pending Entity Framework Core model changes
+- administrator-controlled user provisioning
+- account activation/deactivation
+- role assignment
+- role creation, rename, and deletion
+- permission claims
+- permission-based authorization policies
+- reserved Administrator role
+- configuration-based first-administrator bootstrap
+- administrative Blazor pages
 
-Self-registration is intentionally disabled. User provisioning, roles, and permissions are handled in Group 4.
+Self-registration remains disabled.
 
 ## Build
 
@@ -65,7 +65,14 @@ Apply database migrations explicitly:
 dotnet ef database update --project src/Infrastructure --startup-project src/Web
 ```
 
-See `docs/persistence.md` and `docs/authentication.md`.
+For first-administrator bootstrap, configure `BootstrapAdmin__Email` and `BootstrapAdmin__Password` after applying migrations, start the application once, then remove the password from runtime configuration.
+
+See:
+
+- `docs/architecture.md`
+- `docs/persistence.md`
+- `docs/authentication.md`
+- `docs/authorization.md`
 
 ## Planned development order
 

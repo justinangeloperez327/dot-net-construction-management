@@ -1,0 +1,217 @@
+@page "/admin/roles/{Id:guid}"
+@attribute [Authorize(Policy = Permissions.Roles.View)]
+@inject IRoleAdministration Roles
+@inject NavigationManager Navigation
+
+<PageTitle>Manage role</PageTitle>
+
+@if (_role is null)
+{
+    <h1>Role not found</h1>
+}
+else
+{
+    <h1>Manage role</h1>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_message))
+    {
+        <p class="success-message">@_message</p>
+    }
+
+    <section class="form-section">
+        <h2>Role</h2>
+
+        @if (_role.IsSystemRole)
+        {
+            <p><strong>@_role.Name</strong> is managed by the system.</p>
+        }
+        else
+        {
+            <AuthorizeView Policy="@Permissions.Roles.Update">
+                <Authorized>
+                    <EditForm Model="_nameModel" OnValidSubmit="RenameAsync" class="inline-form">
+                        <DataAnnotationsValidator />
+
+                        <InputText aria-label="Role name"
+                                   @bind-Value="_nameModel.Name" />
+
+                        <button type="submit">Rename</button>
+                    </EditForm>
+                </Authorized>
+            </AuthorizeView>
+        }
+    </section>
+
+    <section class="form-section">
+        <h2>Permissions</h2>
+
+        @if (_role.IsSystemRole)
+        {
+            <p>The Administrator role always has every permission.</p>
+        }
+
+        @foreach (var permission in Permissions.All)
+        {
+            <label class="checkbox-row">
+                <input type="checkbox"
+                       disabled="@_role.IsSystemRole"
+                       checked="@(_role.IsSystemRole || _selectedPermissions.Contains(permission))"
+                       @onchange="eventArgs => TogglePermission(permission, eventArgs.Value)" />
+                <code>@permission</code>
+            </label>
+        }
+
+        @if (!_role.IsSystemRole)
+        {
+            <AuthorizeView Policy="@Permissions.Roles.ManagePermissions">
+                <Authorized>
+                    <button type="button"
+                            @onclick="SavePermissionsAsync">
+                        Save permissions
+                    </button>
+                </Authorized>
+            </AuthorizeView>
+        }
+    </section>
+
+    @if (!_role.IsSystemRole)
+    {
+        <AuthorizeView Policy="@Permissions.Roles.Delete">
+            <Authorized>
+                <section class="danger-zone">
+                    <h2>Delete role</h2>
+                    <p>The role must not be assigned to any user.</p>
+                    <button type="button"
+                            class="danger-button"
+                            @onclick="DeleteAsync">
+                        Delete role
+                    </button>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private RoleDetails? _role;
+    private readonly HashSet<string> _selectedPermissions =
+        new(StringComparer.Ordinal);
+    private readonly RoleNameModel _nameModel = new();
+    private readonly List<string> _errors = [];
+    private string? _message;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _role = await Roles.GetAsync(Id);
+        _selectedPermissions.Clear();
+
+        if (_role is null)
+        {
+            return;
+        }
+
+        _nameModel.Name = _role.Name;
+
+        foreach (var permission in _role.Permissions)
+        {
+            _selectedPermissions.Add(permission);
+        }
+    }
+
+    private async Task RenameAsync()
+    {
+        ClearFeedback();
+
+        var result = await Roles.RenameAsync(
+            Id,
+            _nameModel.Name);
+
+        await HandleResultAsync(result, "Role renamed.");
+    }
+
+    private async Task SavePermissionsAsync()
+    {
+        ClearFeedback();
+
+        var result = await Roles.SetPermissionsAsync(
+            Id,
+            _selectedPermissions.ToArray());
+
+        await HandleResultAsync(
+            result,
+            "Permissions updated.");
+    }
+
+    private async Task DeleteAsync()
+    {
+        ClearFeedback();
+
+        var result = await Roles.DeleteAsync(Id);
+
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        Navigation.NavigateTo("/admin/roles");
+    }
+
+    private async Task HandleResultAsync(
+        RoleActionResult result,
+        string message)
+    {
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        _message = message;
+        await LoadAsync();
+    }
+
+    private void TogglePermission(
+        string permission,
+        object? value)
+    {
+        if (value is true)
+        {
+            _selectedPermissions.Add(permission);
+        }
+        else
+        {
+            _selectedPermissions.Remove(permission);
+        }
+    }
+
+    private void ClearFeedback()
+    {
+        _errors.Clear();
+        _message = null;
+    }
+
+    private sealed class RoleNameModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Name { get; set; } = string.Empty;
+    }
+}
