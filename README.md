@@ -8,7 +8,7 @@ The solution has four production projects:
 
 - **Domain** — business rules and domain model. Depends on nothing outside the .NET base class library.
 - **Application** — use cases and application abstractions. Depends on Domain.
-- **Infrastructure** — external concerns such as persistence, identity, files, and integrations. Depends inward on Application and Domain.
+- **Infrastructure** — persistence, identity, files, and integrations. Depends inward on Application and Domain.
 - **Web** — ASP.NET Core + Blazor presentation and composition root.
 
 Dependencies point inward:
@@ -24,23 +24,28 @@ Infrastructure may implement interfaces owned by Application. Domain must not de
 
 ## Current milestone
 
-**Group 1 — Foundation**
+**Group 2 — SQL Server + Entity Framework Core persistence**
 
-- .NET 10 / C# 14 baseline
-- Clean Architecture project boundaries
-- Blazor Web App with Interactive Server enabled
-- dependency injection entry points
-- architecture dependency tests
-- web integration smoke test
-- GitHub Actions build and test pipeline
+Group 1 established the Clean Architecture foundation. Group 2 adds:
 
-Persistence, SQL Server, authentication, and business features are intentionally deferred to subsequent groups so they are introduced only when their requirements are defined.
+- Entity Framework Core 10
+- SQL Server provider
+- `ApplicationDbContext` in Infrastructure
+- retry-aware SQL Server configuration
+- database readiness health check
+- local `dotnet-ef` tool manifest
+- development LocalDB configuration
+- persistence registration integration tests
+- explicit migration workflow documentation
+
+No empty database migration is created yet. The first migration will be introduced with the first persisted business aggregate.
 
 ## Build
 
 Requires the .NET 10 SDK.
 
 ```bash
+dotnet tool restore
 dotnet restore CPM.slnx
 dotnet build CPM.slnx --configuration Release --no-restore
 dotnet test CPM.slnx --configuration Release --no-build
@@ -51,6 +56,10 @@ Run the web application:
 ```bash
 dotnet run --project src/Web/Web.csproj
 ```
+
+Development uses SQL Server LocalDB. Production must provide `ConnectionStrings__Database` through secure configuration.
+
+See `docs/persistence.md` for database and migration guidance.
 
 ## Planned development order
 
