@@ -1,6 +1,6 @@
 @page "/admin/users"
 @attribute [Authorize(Policy = Permissions.Users.View)]
-@inject IUserAdministration Users
+@inject IUserAdministration UserAdmin
 
 <PageTitle>Users</PageTitle>
 
@@ -59,6 +59,6 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _users = await Users.ListAsync();
+        _users = await UserAdmin.ListAsync();
     }
 }
