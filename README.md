@@ -6,39 +6,30 @@ A deployable construction project management application built with .NET 10 and 
 
 The solution has four production projects:
 
-- **Domain** — business rules and domain model. Depends on nothing outside the .NET base class library.
-- **Application** — use cases and application abstractions. Depends on Domain.
-- **Infrastructure** — persistence, identity, files, and integrations. Depends inward on Application and Domain.
+- **Domain** — business rules and domain model.
+- **Application** — use cases and application abstractions.
+- **Infrastructure** — persistence, identity, files, and integrations.
 - **Web** — ASP.NET Core + Blazor presentation and composition root.
 
-Dependencies point inward:
-
-```text
-Web ------------> Application ---> Domain
-  \                  ^
-   \                 |
-    ----> Infrastructure
-```
+Dependencies point inward.
 
 ## Current milestone
 
-**Group 5 — Projects**
+**Group 6 — Clients and Project Members**
 
-The first construction-business vertical slice now includes:
+The application now includes:
 
-- Project domain aggregate
-- project creation
-- project editing
-- project closing
-- project details
-- searchable/filterable/paginated project list
-- SQL Server persistence
-- project-number uniqueness
-- project permissions
-- Blazor project-management pages
+- independently managed clients
+- optional client assignment to projects
+- active/inactive client state
+- project membership using existing application users
+- free-text project responsibility/title
+- member add/update/remove workflows
+- client and project-member authorization
+- SQL Server relationship mapping
 - Domain, Application, and integration tests
 
-Clients and project members remain intentionally deferred to Group 6.
+No duplicate employee/user table is introduced. Project membership references the existing Identity user by ID.
 
 ## Build
 
@@ -63,7 +54,7 @@ Apply database migrations explicitly:
 dotnet ef database update --project src/Infrastructure --startup-project src/Web
 ```
 
-See `docs/projects.md` for the Project aggregate and use-case boundaries.
+See `docs/clients-project-members.md`.
 
 ## Planned development order
 

@@ -1,0 +1,143 @@
+@page "/clients"
+@attribute [Authorize(Policy = Permissions.Clients.View)]
+@inject ListClientsHandler ClientList
+
+<PageTitle>Clients</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <h1>Clients</h1>
+        <p>Manage project owners and client organizations.</p>
+    </div>
+
+    <AuthorizeView Policy="@Permissions.Clients.Create">
+        <Authorized>
+            <a class="button-link" href="/clients/create">
+                Create client
+            </a>
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+<div class="filter-bar">
+    <input type="search"
+           placeholder="Search name, contact, or email"
+           @bind="_search" />
+
+    <select @bind="_activeFilter">
+        <option value="">All statuses</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+    </select>
+
+    <button type="button" @onclick="ApplyFilterAsync">
+        Search
+    </button>
+</div>
+
+@if (_result is null)
+{
+    <p>Loading...</p>
+}
+else if (_result.Items.Count == 0)
+{
+    <p>No clients found.</p>
+}
+else
+{
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Contact</th>
+                <th>Email</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var client in _result.Items)
+            {
+                <tr>
+                    <td>@client.Name</td>
+                    <td>@(client.ContactPerson ?? "—")</td>
+                    <td>@(client.Email ?? "—")</td>
+                    <td>@(client.IsActive ? "Active" : "Inactive")</td>
+                    <td>
+                        <a href="@($"/clients/{client.Id}")">View</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        <button type="button"
+                disabled="@(_result.Page <= 1)"
+                @onclick="PreviousPageAsync">
+            Previous
+        </button>
+
+        <span>
+            Page @_result.Page of @_result.TotalPages
+            · @_result.TotalCount total
+        </span>
+
+        <button type="button"
+                disabled="@(_result.Page >= _result.TotalPages)"
+                @onclick="NextPageAsync">
+            Next
+        </button>
+    </div>
+}
+
+@code {
+    private ClientListResult? _result;
+    private string? _search;
+    private string _activeFilter = string.Empty;
+    private int _page = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task ApplyFilterAsync()
+    {
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        _page = Math.Max(1, _page - 1);
+        await LoadAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (_result is null)
+        {
+            return;
+        }
+
+        _page = Math.Min(_result.TotalPages, _page + 1);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        bool? isActive = _activeFilter switch
+        {
+            "active" => true,
+            "inactive" => false,
+            _ => null
+        };
+
+        _result = await ClientList.HandleAsync(
+            new ListClientsRequest(
+                _search,
+                isActive,
+                _page));
+    }
+}

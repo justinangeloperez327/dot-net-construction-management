@@ -20,12 +20,21 @@ public static class Permissions
         public const string ManagePermissions = "roles.manage_permissions";
     }
 
+    public static class Clients
+    {
+        public const string View = "clients.view";
+        public const string Create = "clients.create";
+        public const string Update = "clients.update";
+        public const string SetActive = "clients.set_active";
+    }
+
     public static class Projects
     {
         public const string View = "projects.view";
         public const string Create = "projects.create";
         public const string Update = "projects.update";
         public const string Close = "projects.close";
+        public const string ManageMembers = "projects.manage_members";
     }
 
     public static IReadOnlyList<string> All { get; } =
@@ -40,10 +49,15 @@ public static class Permissions
         Roles.Update,
         Roles.Delete,
         Roles.ManagePermissions,
+        Clients.View,
+        Clients.Create,
+        Clients.Update,
+        Clients.SetActive,
         Projects.View,
         Projects.Create,
         Projects.Update,
-        Projects.Close
+        Projects.Close,
+        Projects.ManageMembers
     ];
 }
 

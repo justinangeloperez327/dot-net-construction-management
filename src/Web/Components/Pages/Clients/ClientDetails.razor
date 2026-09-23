@@ -1,0 +1,177 @@
+@page "/clients/{Id:guid}"
+@attribute [Authorize(Policy = Permissions.Clients.View)]
+@inject GetClientHandler ClientReader
+@inject UpdateClientHandler ClientUpdater
+@inject SetClientActiveHandler ClientStatus
+
+<PageTitle>Client</PageTitle>
+
+@if (_client is null)
+{
+    <h1>Client not found</h1>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <h1>@_client.Name</h1>
+            <p>@(_client.IsActive ? "Active" : "Inactive")</p>
+        </div>
+    </div>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_message))
+    {
+        <p class="success-message">@_message</p>
+    }
+
+    <AuthorizeView Policy="@Permissions.Clients.Update">
+        <Authorized Context="authorizationState">
+            <EditForm Model="_model"
+                      OnValidSubmit="SaveAsync"
+                      class="form-grid"
+                      Context="editContext">
+                <DataAnnotationsValidator />
+
+                <label for="name">Client name</label>
+                <InputText id="name" @bind-Value="_model.Name" />
+
+                <label for="contact">Contact person</label>
+                <InputText id="contact" @bind-Value="_model.ContactPerson" />
+
+                <label for="email">Email</label>
+                <InputText id="email"
+                           type="email"
+                           @bind-Value="_model.Email" />
+
+                <label for="phone">Phone</label>
+                <InputText id="phone" @bind-Value="_model.Phone" />
+
+                <label for="address">Address</label>
+                <InputTextArea id="address" @bind-Value="_model.Address" />
+
+                <button type="submit">Save client</button>
+            </EditForm>
+        </Authorized>
+        <NotAuthorized Context="authorizationState">
+            <dl class="details-grid">
+                <dt>Contact person</dt>
+                <dd>@(_client.ContactPerson ?? "—")</dd>
+                <dt>Email</dt>
+                <dd>@(_client.Email ?? "—")</dd>
+                <dt>Phone</dt>
+                <dd>@(_client.Phone ?? "—")</dd>
+                <dt>Address</dt>
+                <dd>@(_client.Address ?? "—")</dd>
+            </dl>
+        </NotAuthorized>
+    </AuthorizeView>
+
+    <AuthorizeView Policy="@Permissions.Clients.SetActive">
+        <Authorized>
+            <button type="button"
+                    class="secondary-button"
+                    @onclick="ToggleActiveAsync">
+                @(_client.IsActive ? "Deactivate client" : "Activate client")
+            </button>
+        </Authorized>
+    </AuthorizeView>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Application.Clients.ClientDetails? _client;
+    private readonly ClientFormModel _model = new();
+    private readonly List<string> _errors = [];
+    private string? _message;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _client = await ClientReader.HandleAsync(Id);
+
+        if (_client is null)
+        {
+            return;
+        }
+
+        _model.Name = _client.Name;
+        _model.ContactPerson = _client.ContactPerson;
+        _model.Email = _client.Email;
+        _model.Phone = _client.Phone;
+        _model.Address = _client.Address;
+    }
+
+    private async Task SaveAsync()
+    {
+        ClearFeedback();
+
+        var result = await ClientUpdater.HandleAsync(
+            Id,
+            new UpdateClientRequest(
+                _model.Name,
+                _model.ContactPerson,
+                _model.Email,
+                _model.Phone,
+                _model.Address));
+
+        await HandleResultAsync(result, "Client updated.");
+    }
+
+    private async Task ToggleActiveAsync()
+    {
+        if (_client is null)
+        {
+            return;
+        }
+
+        ClearFeedback();
+
+        var wasActive = _client.IsActive;
+
+        var result = await ClientStatus.HandleAsync(
+            Id,
+            !wasActive);
+
+        await HandleResultAsync(
+            result,
+            wasActive
+                ? "Client deactivated."
+                : "Client activated.");
+    }
+
+    private async Task HandleResultAsync(
+        ClientActionResult result,
+        string message)
+    {
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        _message = message;
+        await LoadAsync();
+    }
+
+    private void ClearFeedback()
+    {
+        _errors.Clear();
+        _message = null;
+    }
+}

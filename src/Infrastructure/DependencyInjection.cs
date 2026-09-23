@@ -1,3 +1,4 @@
+using Application.Clients;
 using Application.Common.Authorization;
 using Application.Projects;
 using Application.Roles;
@@ -86,8 +87,12 @@ public static class DependencyInjection
             PermissionAuthorizationHandler>();
 
         services.AddScoped<IUserAdministration, UserAdministration>();
+        services.AddScoped<IUserDirectory, UserDirectory>();
         services.AddScoped<IRoleAdministration, RoleAdministration>();
+
+        services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
+        services.AddScoped<IProjectMemberRepository, ProjectMemberRepository>();
 
         services
             .AddHealthChecks()

@@ -1,3 +1,4 @@
+using Domain.Clients;
 using Domain.Projects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -40,5 +41,10 @@ public sealed class ProjectConfiguration
             .HasConversion<string>()
             .HasMaxLength(32)
             .IsRequired();
+
+        builder.HasOne<Client>()
+            .WithMany()
+            .HasForeignKey(project => project.ClientId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

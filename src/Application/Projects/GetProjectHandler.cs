@@ -1,7 +1,10 @@
+using Application.Clients;
+
 namespace Application.Projects;
 
 public sealed class GetProjectHandler(
-    IProjectRepository projects)
+    IProjectRepository projects,
+    IClientRepository clients)
 {
     public async Task<ProjectDetails?> HandleAsync(
         Guid projectId,
@@ -11,16 +14,32 @@ public sealed class GetProjectHandler(
             projectId,
             cancellationToken);
 
-        return project is null
-            ? null
-            : new ProjectDetails(
-                project.Id,
-                project.ProjectNumber,
-                project.Name,
-                project.Location,
-                project.StartDate,
-                project.TargetCompletionDate,
-                project.Description,
-                project.Status);
+        if (project is null)
+        {
+            return null;
+        }
+
+        string? clientName = null;
+
+        if (project.ClientId is Guid clientId)
+        {
+            var client = await clients.GetByIdAsync(
+                clientId,
+                cancellationToken);
+
+            clientName = client?.Name;
+        }
+
+        return new ProjectDetails(
+            project.Id,
+            project.ProjectNumber,
+            project.Name,
+            project.ClientId,
+            clientName,
+            project.Location,
+            project.StartDate,
+            project.TargetCompletionDate,
+            project.Description,
+            project.Status);
     }
 }
