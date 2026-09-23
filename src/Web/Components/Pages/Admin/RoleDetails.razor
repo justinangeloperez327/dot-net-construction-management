@@ -38,8 +38,11 @@ else
         else
         {
             <AuthorizeView Policy="@Permissions.Roles.Update">
-                <Authorized>
-                    <EditForm Model="_nameModel" OnValidSubmit="RenameAsync" class="inline-form">
+                <Authorized Context="authorizationState">
+                    <EditForm Model="_nameModel"
+                              OnValidSubmit="RenameAsync"
+                              class="inline-form"
+                              Context="editContext">
                         <DataAnnotationsValidator />
 
                         <InputText aria-label="Role name"
@@ -74,7 +77,7 @@ else
         @if (!_role.IsSystemRole)
         {
             <AuthorizeView Policy="@Permissions.Roles.ManagePermissions">
-                <Authorized>
+                <Authorized Context="authorizationState">
                     <button type="button"
                             @onclick="SavePermissionsAsync">
                         Save permissions
@@ -87,7 +90,7 @@ else
     @if (!_role.IsSystemRole)
     {
         <AuthorizeView Policy="@Permissions.Roles.Delete">
-            <Authorized>
+            <Authorized Context="authorizationState">
                 <section class="danger-zone">
                     <h2>Delete role</h2>
                     <p>The role must not be assigned to any user.</p>
