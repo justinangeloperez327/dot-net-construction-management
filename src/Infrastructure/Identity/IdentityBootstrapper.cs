@@ -12,20 +12,6 @@ public static class IdentityBootstrapper
         this IServiceProvider services,
         IConfiguration configuration)
     {
-        using var scope = services.CreateScope();
-
-        var roleManager = scope.ServiceProvider
-            .GetRequiredService<RoleManager<IdentityRole<Guid>>>();
-
-        var userManager = scope.ServiceProvider
-            .GetRequiredService<UserManager<ApplicationUser>>();
-
-        var role = await EnsureAdministratorRoleAsync(roleManager);
-
-        await EnsureAdministratorPermissionsAsync(
-            roleManager,
-            role);
-
         var email = configuration["BootstrapAdmin:Email"];
         var password = configuration["BootstrapAdmin:Password"];
 
@@ -41,6 +27,41 @@ public static class IdentityBootstrapper
             throw new InvalidOperationException(
                 "BootstrapAdmin requires both Email and Password.");
         }
+
+        using var scope = services.CreateScope();
+
+        var roleManager = scope.ServiceProvider
+            .GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+
+        var userManager = scope.ServiceProvider
+            .GetRequiredService<UserManager<ApplicationUser>>();
+
+        var role = await roleManager.FindByNameAsync(
+            SystemRoles.Administrator);
+
+        if (role is null)
+        {
+            role = new IdentityRole<Guid>
+            {
+                Id = Guid.NewGuid(),
+                Name = SystemRoles.Administrator
+            };
+
+            var roleResult = await roleManager.CreateAsync(role);
+
+            if (!roleResult.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    string.Join(
+                        "; ",
+                        roleResult.Errors.Select(
+                            error => error.Description)));
+            }
+        }
+
+        await EnsureAdministratorPermissionsAsync(
+            roleManager,
+            role);
 
         var user = await userManager.FindByEmailAsync(email);
 
@@ -91,37 +112,6 @@ public static class IdentityBootstrapper
                             error => error.Description)));
             }
         }
-    }
-
-    private static async Task<IdentityRole<Guid>> EnsureAdministratorRoleAsync(
-        RoleManager<IdentityRole<Guid>> roleManager)
-    {
-        var role = await roleManager.FindByNameAsync(
-            SystemRoles.Administrator);
-
-        if (role is not null)
-        {
-            return role;
-        }
-
-        role = new IdentityRole<Guid>
-        {
-            Id = Guid.NewGuid(),
-            Name = SystemRoles.Administrator
-        };
-
-        var result = await roleManager.CreateAsync(role);
-
-        if (!result.Succeeded)
-        {
-            throw new InvalidOperationException(
-                string.Join(
-                    "; ",
-                    result.Errors.Select(
-                        error => error.Description)));
-        }
-
-        return role;
     }
 
     private static async Task EnsureAdministratorPermissionsAsync(
