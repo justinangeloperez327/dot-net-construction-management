@@ -1,5 +1,5 @@
 @page "/admin/users/{Id:guid}"
-@attribute [Authorize(Policy = Permissions.Users.Update)]
+@attribute [Authorize(Policy = Permissions.Users.View)]
 @inject IUserAdministration UserAdmin
 @inject IRoleAdministration RoleAdmin
 
@@ -31,23 +31,26 @@ else
     <section class="form-section">
         <h2>Account</h2>
 
-        <EditForm Model="_emailModel" OnValidSubmit="UpdateEmailAsync" class="form-grid">
-            <DataAnnotationsValidator />
+        <AuthorizeView Policy="@Permissions.Users.Update">
+            <Authorized Context="authorizationState">
+                <EditForm Model="_emailModel"
+                          OnValidSubmit="UpdateEmailAsync"
+                          class="form-grid"
+                          Context="editContext">
+                    <DataAnnotationsValidator />
 
-            <label for="email">Email</label>
-            <InputText id="email"
-                       type="email"
-                       @bind-Value="_emailModel.Email" />
+                    <label for="email">Email</label>
+                    <InputText id="email"
+                               type="email"
+                               @bind-Value="_emailModel.Email" />
 
-            <AuthorizeView Policy="@Permissions.Users.Update">
-                <Authorized>
                     <button type="submit">Save email</button>
-                </Authorized>
-            </AuthorizeView>
-        </EditForm>
+                </EditForm>
+            </Authorized>
+        </AuthorizeView>
 
         <AuthorizeView Policy="@Permissions.Users.SetActive">
-            <Authorized>
+            <Authorized Context="authorizationState">
                 <button type="button"
                         class="secondary-button"
                         @onclick="ToggleActiveAsync">
@@ -58,7 +61,7 @@ else
     </section>
 
     <AuthorizeView Policy="@Permissions.Users.ManageRoles">
-        <Authorized>
+        <Authorized Context="authorizationState">
             <section class="form-section">
                 <h2>Roles</h2>
 
