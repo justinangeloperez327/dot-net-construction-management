@@ -65,7 +65,7 @@ projects.update
 projects.close
 ```
 
-The Administrator bootstrap automatically receives newly defined permissions.
+The system synchronizes all defined permissions onto the reserved Administrator role during startup. This does not require retaining the bootstrap administrator password after initial provisioning.
 
 ## User interface
 
