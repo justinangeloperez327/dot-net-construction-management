@@ -98,7 +98,7 @@ public static class AuthenticationEndpoints
     private static string GetSafeReturnUrl(string? returnUrl)
     {
         if (string.IsNullOrWhiteSpace(returnUrl) ||
-            !returnUrl.StartsWith('/', StringComparison.Ordinal) ||
+            !returnUrl.StartsWith("/", StringComparison.Ordinal) ||
             returnUrl.StartsWith("//", StringComparison.Ordinal))
         {
             return "/";
