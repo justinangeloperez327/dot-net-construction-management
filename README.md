@@ -24,21 +24,21 @@ Infrastructure may implement interfaces owned by Application. Domain must not de
 
 ## Current milestone
 
-**Group 2 — SQL Server + Entity Framework Core persistence**
+**Group 3 — Authentication**
 
-Group 1 established the Clean Architecture foundation. Group 2 adds:
+Groups 1 and 2 established the Clean Architecture and persistence foundations. Group 3 adds:
 
-- Entity Framework Core 10
-- SQL Server provider
-- `ApplicationDbContext` in Infrastructure
-- retry-aware SQL Server configuration
-- database readiness health check
-- local `dotnet-ef` tool manifest
-- development LocalDB configuration
-- persistence registration integration tests
-- explicit migration workflow documentation
+- ASP.NET Core Identity backed by SQL Server
+- secure application-cookie authentication
+- sign-in and sign-out flows
+- protected Blazor routes
+- current-user abstraction for Application
+- failed-login lockout
+- access-denied handling
+- initial Identity database migration
+- CI check for pending Entity Framework Core model changes
 
-No empty database migration is created yet. The first migration will be introduced with the first persisted business aggregate.
+Self-registration is intentionally disabled. User provisioning, roles, and permissions are handled in Group 4.
 
 ## Build
 
@@ -59,7 +59,13 @@ dotnet run --project src/Web/Web.csproj
 
 Development uses SQL Server LocalDB. Production must provide `ConnectionStrings__Database` through secure configuration.
 
-See `docs/persistence.md` for database and migration guidance.
+Apply database migrations explicitly:
+
+```bash
+dotnet ef database update --project src/Infrastructure --startup-project src/Web
+```
+
+See `docs/persistence.md` and `docs/authentication.md`.
 
 ## Planned development order
 
