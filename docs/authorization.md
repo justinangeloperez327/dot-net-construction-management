@@ -45,6 +45,8 @@ It:
 - always receives every defined permission through bootstrap
 - is intended for the initial system administrator and trusted administrators
 
+The administration service prevents deactivating an Administrator or removing the Administrator role when that action would leave the system without any other active Administrator account.
+
 ## Bootstrap administrator
 
 There is no public or self-registration flow.
