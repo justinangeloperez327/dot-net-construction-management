@@ -1,0 +1,111 @@
+@page "/projects/{Id:guid}"
+@attribute [Authorize(Policy = Permissions.Projects.View)]
+@inject GetProjectHandler ProjectReader
+@inject CloseProjectHandler ProjectCloser
+
+<PageTitle>Project</PageTitle>
+
+@if (_project is null)
+{
+    <h1>Project not found</h1>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <h1>@_project.Name</h1>
+            <p>@_project.ProjectNumber</p>
+        </div>
+
+        <div class="page-actions">
+            @if (_project.Status == ProjectStatus.Active)
+            {
+                <AuthorizeView Policy="@Permissions.Projects.Update">
+                    <Authorized>
+                        <a class="button-link"
+                           href="@($"/projects/{Id}/edit")">
+                            Edit
+                        </a>
+                    </Authorized>
+                </AuthorizeView>
+            }
+        </div>
+    </div>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    <dl class="details-grid">
+        <dt>Status</dt>
+        <dd>@_project.Status</dd>
+
+        <dt>Location</dt>
+        <dd>@(_project.Location ?? "—")</dd>
+
+        <dt>Start date</dt>
+        <dd>@_project.StartDate.ToString("dd MMM yyyy")</dd>
+
+        <dt>Target completion</dt>
+        <dd>@(_project.TargetCompletionDate?.ToString("dd MMM yyyy") ?? "—")</dd>
+
+        <dt>Description</dt>
+        <dd>@(_project.Description ?? "—")</dd>
+    </dl>
+
+    @if (_project.Status == ProjectStatus.Active)
+    {
+        <AuthorizeView Policy="@Permissions.Projects.Close">
+            <Authorized>
+                <section class="danger-zone">
+                    <h2>Close project</h2>
+                    <p>Closing a project prevents further project detail changes.</p>
+                    <button type="button"
+                            class="danger-button"
+                            @onclick="CloseAsync">
+                        Close project
+                    </button>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Application.Projects.ProjectDetails? _project;
+    private readonly List<string> _errors = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _project = await ProjectReader.HandleAsync(Id);
+    }
+
+    private async Task CloseAsync()
+    {
+        _errors.Clear();
+
+        var result = await ProjectCloser.HandleAsync(Id);
+
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        await LoadAsync();
+    }
+}

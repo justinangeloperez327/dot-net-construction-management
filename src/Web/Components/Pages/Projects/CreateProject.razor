@@ -1,0 +1,77 @@
+@page "/projects/create"
+@attribute [Authorize(Policy = Permissions.Projects.Create)]
+@inject CreateProjectHandler ProjectCreator
+@inject NavigationManager Navigation
+
+<PageTitle>Create project</PageTitle>
+
+<h1>Create project</h1>
+
+@if (_errors.Count > 0)
+{
+    <div class="validation-error" role="alert">
+        @foreach (var error in _errors)
+        {
+            <div>@error</div>
+        }
+    </div>
+}
+
+<EditForm Model="_model"
+          OnValidSubmit="CreateAsync"
+          class="form-grid">
+    <DataAnnotationsValidator />
+
+    <label for="project-number">Project number</label>
+    <InputText id="project-number"
+               @bind-Value="_model.ProjectNumber" />
+
+    <label for="name">Project name</label>
+    <InputText id="name"
+               @bind-Value="_model.Name" />
+
+    <label for="location">Location</label>
+    <InputText id="location"
+               @bind-Value="_model.Location" />
+
+    <label for="start-date">Start date</label>
+    <InputDate id="start-date"
+               @bind-Value="_model.StartDate" />
+
+    <label for="target-date">Target completion date</label>
+    <InputDate id="target-date"
+               @bind-Value="_model.TargetCompletionDate" />
+
+    <label for="description">Description</label>
+    <InputTextArea id="description"
+                   @bind-Value="_model.Description" />
+
+    <button type="submit">Create project</button>
+</EditForm>
+
+@code {
+    private readonly ProjectFormModel _model = new();
+    private readonly List<string> _errors = [];
+
+    private async Task CreateAsync()
+    {
+        _errors.Clear();
+
+        var result = await ProjectCreator.HandleAsync(
+            new CreateProjectRequest(
+                _model.ProjectNumber,
+                _model.Name,
+                _model.Location,
+                _model.StartDate,
+                _model.TargetCompletionDate,
+                _model.Description));
+
+        if (result.Succeeded && result.ProjectId is Guid projectId)
+        {
+            Navigation.NavigateTo($"/projects/{projectId}");
+            return;
+        }
+
+        _errors.AddRange(result.Errors);
+    }
+}

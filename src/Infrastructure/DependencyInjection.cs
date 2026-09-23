@@ -1,4 +1,5 @@
 using Application.Common.Authorization;
+using Application.Projects;
 using Application.Roles;
 using Application.Users;
 using Infrastructure.Identity;
@@ -82,6 +83,7 @@ public static class DependencyInjection
 
         services.AddScoped<IUserAdministration, UserAdministration>();
         services.AddScoped<IRoleAdministration, RoleAdministration>();
+        services.AddScoped<IProjectRepository, ProjectRepository>();
 
         services
             .AddHealthChecks()
