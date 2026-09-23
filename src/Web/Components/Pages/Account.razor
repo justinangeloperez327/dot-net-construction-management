@@ -1,0 +1,15 @@
+@page "/account"
+@attribute [Authorize]
+
+<PageTitle>Account</PageTitle>
+
+<h1>Account</h1>
+
+<AuthorizeView>
+    <Authorized Context="auth">
+        <dl>
+            <dt>Email</dt>
+            <dd>@(auth.User.Identity?.Name ?? "Authenticated user")</dd>
+        </dl>
+    </Authorized>
+</AuthorizeView>

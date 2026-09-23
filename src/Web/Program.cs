@@ -1,6 +1,9 @@
 using Application;
+using Application.Common.Authentication;
 using Infrastructure;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Web.Authentication;
 using Web.Components;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -8,6 +11,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services
     .AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -22,6 +28,9 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 
 app.MapHealthChecks(
@@ -37,6 +46,8 @@ app.MapHealthChecks(
     {
         Predicate = registration => registration.Tags.Contains("ready")
     });
+
+app.MapAuthenticationEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

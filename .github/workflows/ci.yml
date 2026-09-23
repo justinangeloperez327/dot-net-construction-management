@@ -25,11 +25,19 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Restore local tools
+        run: dotnet tool restore
+
       - name: Restore
         run: dotnet restore CPM.slnx
 
       - name: Build
         run: dotnet build CPM.slnx --configuration Release --no-restore
+
+      - name: Check migration model
+        env:
+          ConnectionStrings__Database: "Server=localhost;Database=ConstructionManagement;User ID=sa;Password=NotUsedInMigrationCheck1!;TrustServerCertificate=True"
+        run: dotnet ef migrations has-pending-model-changes --project src/Infrastructure --startup-project src/Web --configuration Release --no-build
 
       - name: Test
         run: dotnet test CPM.slnx --configuration Release --no-build --verbosity normal
