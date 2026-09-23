@@ -25,11 +25,26 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Restore local tools
+        run: dotnet tool restore
+
       - name: Restore
         run: dotnet restore CPM.slnx
 
       - name: Build
         run: dotnet build CPM.slnx --configuration Release --no-restore
+
+      - name: Generate Identity migration preview
+        env:
+          ConnectionStrings__Database: "Server=localhost;Database=ConstructionManagement;User ID=sa;Password=NotUsedInMigration1!;TrustServerCertificate=True"
+        run: |
+          dotnet ef migrations add InitialIdentity             --project src/Infrastructure             --startup-project src/Web             --output-dir Persistence/Migrations             --no-build
+
+          for file in src/Infrastructure/Persistence/Migrations/*; do
+            echo "===== BEGIN $file ====="
+            cat "$file"
+            echo "===== END $file ====="
+          done
 
       - name: Test
         run: dotnet test CPM.slnx --configuration Release --no-build --verbosity normal
