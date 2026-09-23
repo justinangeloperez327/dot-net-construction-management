@@ -1,4 +1,6 @@
+using Application.Common.Authorization;
 using Application.Users;
+using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -6,7 +8,8 @@ namespace Infrastructure.Identity;
 
 public sealed class UserAdministration(
     UserManager<ApplicationUser> userManager,
-    RoleManager<IdentityRole<Guid>> roleManager)
+    RoleManager<IdentityRole<Guid>> roleManager,
+    ApplicationDbContext dbContext)
     : IUserAdministration
 {
     public async Task<IReadOnlyList<UserSummary>> ListAsync(
@@ -152,6 +155,18 @@ public sealed class UserAdministration(
             return UserActionResult.Failure("User was not found.");
         }
 
+        if (!isActive &&
+            await userManager.IsInRoleAsync(
+                user,
+                SystemRoles.Administrator) &&
+            !await HasAnotherActiveAdministratorAsync(
+                user.Id,
+                cancellationToken))
+        {
+            return UserActionResult.Failure(
+                "At least one active Administrator account is required.");
+        }
+
         user.IsActive = isActive;
 
         var updateResult = await userManager.UpdateAsync(user);
@@ -195,6 +210,22 @@ public sealed class UserAdministration(
         }
 
         var currentRoles = await userManager.GetRolesAsync(user);
+        var removingAdministrator =
+            currentRoles.Contains(
+                SystemRoles.Administrator,
+                StringComparer.OrdinalIgnoreCase) &&
+            !requestedRoles.Contains(
+                SystemRoles.Administrator,
+                StringComparer.OrdinalIgnoreCase);
+
+        if (removingAdministrator &&
+            !await HasAnotherActiveAdministratorAsync(
+                user.Id,
+                cancellationToken))
+        {
+            return UserActionResult.Failure(
+                "At least one active Administrator account is required.");
+        }
 
         var toRemove = currentRoles
             .Except(requestedRoles, StringComparer.OrdinalIgnoreCase)
@@ -247,5 +278,29 @@ public sealed class UserAdministration(
         }
 
         return null;
+    }
+
+    private async Task<bool> HasAnotherActiveAdministratorAsync(
+        Guid excludedUserId,
+        CancellationToken cancellationToken)
+    {
+        var administratorRole = await roleManager.FindByNameAsync(
+            SystemRoles.Administrator);
+
+        if (administratorRole is null)
+        {
+            return false;
+        }
+
+        return await dbContext.UserRoles
+            .Where(userRole =>
+                userRole.RoleId == administratorRole.Id &&
+                userRole.UserId != excludedUserId)
+            .Join(
+                dbContext.Users.Where(user => user.IsActive),
+                userRole => userRole.UserId,
+                user => user.Id,
+                (_, user) => user)
+            .AnyAsync(cancellationToken);
     }
 }
