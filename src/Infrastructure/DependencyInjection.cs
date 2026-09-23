@@ -1,3 +1,6 @@
+using Application.Common.Authorization;
+using Application.Roles;
+using Application.Users;
 using Infrastructure.Identity;
 using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http;
@@ -44,7 +47,7 @@ public static class DependencyInjection
             })
             .AddRoles<IdentityRole<Guid>>()
             .AddEntityFrameworkStores<ApplicationDbContext>()
-            .AddSignInManager()
+            .AddSignInManager<ApplicationSignInManager>()
             .AddDefaultTokenProviders();
 
         services
@@ -65,7 +68,20 @@ public static class DependencyInjection
             options.ExpireTimeSpan = TimeSpan.FromHours(8);
         });
 
-        services.AddAuthorization();
+        services.AddAuthorization(options =>
+        {
+            foreach (var permission in Permissions.All)
+            {
+                options.AddPolicy(
+                    permission,
+                    policy => policy.RequireClaim(
+                        PermissionClaimTypes.Permission,
+                        permission));
+            }
+        });
+
+        services.AddScoped<IUserAdministration, UserAdministration>();
+        services.AddScoped<IRoleAdministration, RoleAdministration>();
 
         services
             .AddHealthChecks()

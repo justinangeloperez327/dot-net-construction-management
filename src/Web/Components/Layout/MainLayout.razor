@@ -5,6 +5,18 @@
         <a href="/">Construction Project Management</a>
 
         <nav class="app-nav">
+            <AuthorizeView Policy="@Permissions.Users.View">
+                <Authorized>
+                    <a href="/admin/users">Users</a>
+                </Authorized>
+            </AuthorizeView>
+
+            <AuthorizeView Policy="@Permissions.Roles.View">
+                <Authorized>
+                    <a href="/admin/roles">Roles</a>
+                </Authorized>
+            </AuthorizeView>
+
             <AuthorizeView>
                 <Authorized>
                     <a href="/account">Account</a>

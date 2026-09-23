@@ -1,6 +1,7 @@
 using Application;
 using Application.Common.Authentication;
 using Infrastructure;
+using Infrastructure.Identity;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Web.Authentication;
@@ -51,6 +52,9 @@ app.MapAuthenticationEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+await app.Services.EnsureBootstrapAdministratorAsync(
+    builder.Configuration);
 
 app.Run();
 

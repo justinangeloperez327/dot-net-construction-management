@@ -25,7 +25,7 @@ public static class AuthenticationEndpoints
         HttpContext httpContext,
         IAntiforgery antiforgery,
         UserManager<ApplicationUser> userManager,
-        SignInManager<ApplicationUser> signInManager)
+        ApplicationSignInManager signInManager)
     {
         await antiforgery.ValidateRequestAsync(httpContext);
 
@@ -48,7 +48,7 @@ public static class AuthenticationEndpoints
 
         var user = await userManager.FindByEmailAsync(email);
 
-        if (user is null)
+        if (user is null || !user.IsActive)
         {
             return RedirectToLogin(returnUrl, "invalid");
         }
@@ -74,7 +74,7 @@ public static class AuthenticationEndpoints
     private static async Task<IResult> LogoutAsync(
         HttpContext httpContext,
         IAntiforgery antiforgery,
-        SignInManager<ApplicationUser> signInManager)
+        ApplicationSignInManager signInManager)
     {
         await antiforgery.ValidateRequestAsync(httpContext);
         await signInManager.SignOutAsync();
