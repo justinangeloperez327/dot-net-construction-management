@@ -1,6 +1,6 @@
 @page "/admin/roles/{Id:guid}"
 @attribute [Authorize(Policy = Permissions.Roles.View)]
-@inject IRoleAdministration Roles
+@inject IRoleAdministration RoleAdmin
 @inject NavigationManager Navigation
 
 <PageTitle>Manage role</PageTitle>
@@ -106,7 +106,7 @@ else
     [Parameter]
     public Guid Id { get; set; }
 
-    private RoleDetails? _role;
+    private Application.Roles.RoleDetails? _role;
     private readonly HashSet<string> _selectedPermissions =
         new(StringComparer.Ordinal);
     private readonly RoleNameModel _nameModel = new();
@@ -120,7 +120,7 @@ else
 
     private async Task LoadAsync()
     {
-        _role = await Roles.GetAsync(Id);
+        _role = await RoleAdmin.GetAsync(Id);
         _selectedPermissions.Clear();
 
         if (_role is null)
@@ -140,7 +140,7 @@ else
     {
         ClearFeedback();
 
-        var result = await Roles.RenameAsync(
+        var result = await RoleAdmin.RenameAsync(
             Id,
             _nameModel.Name);
 
@@ -151,7 +151,7 @@ else
     {
         ClearFeedback();
 
-        var result = await Roles.SetPermissionsAsync(
+        var result = await RoleAdmin.SetPermissionsAsync(
             Id,
             _selectedPermissions.ToArray());
 
@@ -164,7 +164,7 @@ else
     {
         ClearFeedback();
 
-        var result = await Roles.DeleteAsync(Id);
+        var result = await RoleAdmin.DeleteAsync(Id);
 
         if (!result.Succeeded)
         {
