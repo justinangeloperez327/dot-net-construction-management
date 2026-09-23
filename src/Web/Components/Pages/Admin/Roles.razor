@@ -1,6 +1,6 @@
 @page "/admin/roles"
 @attribute [Authorize(Policy = Permissions.Roles.View)]
-@inject IRoleAdministration Roles
+@inject IRoleAdministration RoleAdmin
 @inject NavigationManager Navigation
 
 <PageTitle>Roles</PageTitle>
@@ -83,7 +83,7 @@ else
     {
         _errors.Clear();
 
-        var result = await Roles.CreateAsync(_model.Name);
+        var result = await RoleAdmin.CreateAsync(_model.Name);
 
         if (result.Succeeded && result.RoleId is Guid roleId)
         {
@@ -96,7 +96,7 @@ else
 
     private async Task ReloadAsync()
     {
-        _roles = await Roles.ListAsync();
+        _roles = await RoleAdmin.ListAsync();
     }
 
     private sealed class CreateRoleModel
