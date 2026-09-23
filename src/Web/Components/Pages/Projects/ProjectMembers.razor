@@ -1,0 +1,234 @@
+@page "/projects/{Id:guid}/members"
+@attribute [Authorize(Policy = Permissions.Projects.ManageMembers)]
+@inject GetProjectHandler ProjectReader
+@inject ListProjectMembersHandler MemberList
+@inject ListAssignableUsersHandler UserList
+@inject AddProjectMemberHandler MemberAdder
+@inject UpdateProjectMemberHandler MemberUpdater
+@inject RemoveProjectMemberHandler MemberRemover
+
+<PageTitle>Project members</PageTitle>
+
+@if (_project is null)
+{
+    <h1>Project not found</h1>
+}
+else
+{
+    <h1>Project members</h1>
+    <p>@_project.ProjectNumber · @_project.Name</p>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    @if (_project.Status == ProjectStatus.Active)
+    {
+        <section class="form-section">
+            <h2>Add member</h2>
+
+            <EditForm Model="_newMember"
+                      OnValidSubmit="AddAsync"
+                      class="form-grid">
+                <DataAnnotationsValidator />
+
+                <label for="user">User</label>
+                <InputSelect id="user"
+                             @bind-Value="_newMember.UserId">
+                    <option value="">Select user</option>
+                    @foreach (var user in AvailableUsers)
+                    {
+                        <option value="@user.Id">@user.Email</option>
+                    }
+                </InputSelect>
+
+                <label for="responsibility">Responsibility / title</label>
+                <InputText id="responsibility"
+                           @bind-Value="_newMember.Responsibility" />
+
+                <button type="submit">Add member</button>
+            </EditForm>
+        </section>
+    }
+
+    <section class="form-section">
+        <h2>Assigned members</h2>
+
+        @if (_members.Count == 0)
+        {
+            <p>No members assigned.</p>
+        }
+        else
+        {
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Responsibility / title</th>
+                        @if (_project.Status == ProjectStatus.Active)
+                        {
+                            <th></th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var member in _members)
+                    {
+                        <tr>
+                            <td>@member.Email</td>
+                            <td>
+                                @if (_project.Status == ProjectStatus.Active)
+                                {
+                                    <input value="@GetResponsibility(member.UserId)"
+                                           @onchange="eventArgs => SetResponsibility(member.UserId, eventArgs.Value)" />
+                                }
+                                else
+                                {
+                                    @(member.Responsibility ?? "—")
+                                }
+                            </td>
+                            @if (_project.Status == ProjectStatus.Active)
+                            {
+                                <td class="table-actions">
+                                    <button type="button"
+                                            @onclick="() => SaveMemberAsync(member.UserId)">
+                                        Save
+                                    </button>
+                                    <button type="button"
+                                            class="danger-button"
+                                            @onclick="() => RemoveAsync(member.UserId)">
+                                        Remove
+                                    </button>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Application.Projects.ProjectDetails? _project;
+    private IReadOnlyList<ProjectMemberDetails> _members = [];
+    private IReadOnlyList<UserDirectoryEntry> _users = [];
+    private readonly Dictionary<Guid, string?> _responsibilities = [];
+    private readonly AddMemberModel _newMember = new();
+    private readonly List<string> _errors = [];
+
+    private IEnumerable<UserDirectoryEntry> AvailableUsers =>
+        _users.Where(user =>
+            !_members.Any(member => member.UserId == user.Id));
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _project = await ProjectReader.HandleAsync(Id);
+        _members = await MemberList.HandleAsync(Id);
+        _users = await UserList.HandleAsync();
+
+        _responsibilities.Clear();
+
+        foreach (var member in _members)
+        {
+            _responsibilities[member.UserId] = member.Responsibility;
+        }
+    }
+
+    private async Task AddAsync()
+    {
+        _errors.Clear();
+
+        if (_newMember.UserId is null)
+        {
+            _errors.Add("Select a user.");
+            return;
+        }
+
+        var result = await MemberAdder.HandleAsync(
+            Id,
+            new AddProjectMemberRequest(
+                _newMember.UserId.Value,
+                _newMember.Responsibility));
+
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        _newMember.UserId = null;
+        _newMember.Responsibility = null;
+        await LoadAsync();
+    }
+
+    private async Task SaveMemberAsync(Guid userId)
+    {
+        _errors.Clear();
+
+        var result = await MemberUpdater.HandleAsync(
+            Id,
+            userId,
+            GetResponsibility(userId));
+
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task RemoveAsync(Guid userId)
+    {
+        _errors.Clear();
+
+        var result = await MemberRemover.HandleAsync(
+            Id,
+            userId);
+
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private string? GetResponsibility(Guid userId)
+    {
+        return _responsibilities.GetValueOrDefault(userId);
+    }
+
+    private void SetResponsibility(
+        Guid userId,
+        object? value)
+    {
+        _responsibilities[userId] = value?.ToString();
+    }
+
+    private sealed class AddMemberModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public Guid? UserId { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(150)]
+        public string? Responsibility { get; set; }
+    }
+}

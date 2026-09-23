@@ -1,0 +1,97 @@
+@page "/projects/{Id:guid}/client"
+@attribute [Authorize(Policy = Permissions.Projects.Update)]
+@inject GetProjectHandler ProjectReader
+@inject ListActiveClientsHandler ClientList
+@inject AssignProjectClientHandler ClientAssigner
+@inject NavigationManager Navigation
+
+<PageTitle>Project client</PageTitle>
+
+@if (_project is null)
+{
+    <h1>Project not found</h1>
+}
+else
+{
+    <h1>Project client</h1>
+    <p>@_project.ProjectNumber · @_project.Name</p>
+
+    @if (_project.Status == ProjectStatus.Closed)
+    {
+        <p>This project is closed. The client assignment cannot be changed.</p>
+    }
+    else
+    {
+        @if (_errors.Count > 0)
+        {
+            <div class="validation-error" role="alert">
+                @foreach (var error in _errors)
+                {
+                    <div>@error</div>
+                }
+            </div>
+        }
+
+        <div class="form-grid">
+            <label for="client">Client</label>
+            <select id="client" @bind="_clientId">
+                <option value="">No client assigned</option>
+                @foreach (var client in _clients)
+                {
+                    <option value="@client.Id">@client.Name</option>
+                }
+            </select>
+
+            <button type="button" @onclick="SaveAsync">
+                Save client
+            </button>
+        </div>
+    }
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Application.Projects.ProjectDetails? _project;
+    private IReadOnlyList<ClientOption> _clients = [];
+    private string _clientId = string.Empty;
+    private readonly List<string> _errors = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _project = await ProjectReader.HandleAsync(Id);
+        _clients = await ClientList.HandleAsync();
+        _clientId = _project?.ClientId?.ToString() ?? string.Empty;
+    }
+
+    private async Task SaveAsync()
+    {
+        _errors.Clear();
+
+        Guid? clientId = null;
+
+        if (!string.IsNullOrWhiteSpace(_clientId))
+        {
+            if (!Guid.TryParse(_clientId, out var parsedClientId))
+            {
+                _errors.Add("Select a valid client.");
+                return;
+            }
+
+            clientId = parsedClientId;
+        }
+
+        var result = await ClientAssigner.HandleAsync(
+            Id,
+            clientId);
+
+        if (result.Succeeded)
+        {
+            Navigation.NavigateTo($"/projects/{Id}");
+            return;
+        }
+
+        _errors.AddRange(result.Errors);
+    }
+}

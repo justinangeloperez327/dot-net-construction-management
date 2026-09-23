@@ -2,6 +2,7 @@
 @attribute [Authorize(Policy = Permissions.Projects.View)]
 @inject GetProjectHandler ProjectReader
 @inject CloseProjectHandler ProjectCloser
+@inject ListProjectMembersHandler ProjectMembers
 
 <PageTitle>Project</PageTitle>
 
@@ -26,6 +27,20 @@ else
                            href="@($"/projects/{Id}/edit")">
                             Edit
                         </a>
+
+                        <a class="button-link"
+                           href="@($"/projects/{Id}/client")">
+                            Client
+                        </a>
+                    </Authorized>
+                </AuthorizeView>
+
+                <AuthorizeView Policy="@Permissions.Projects.ManageMembers">
+                    <Authorized>
+                        <a class="button-link"
+                           href="@($"/projects/{Id}/members")">
+                            Members
+                        </a>
                     </Authorized>
                 </AuthorizeView>
             }
@@ -46,6 +61,9 @@ else
         <dt>Status</dt>
         <dd>@_project.Status</dd>
 
+        <dt>Client</dt>
+        <dd>@(_project.ClientName ?? "—")</dd>
+
         <dt>Location</dt>
         <dd>@(_project.Location ?? "—")</dd>
 
@@ -58,6 +76,35 @@ else
         <dt>Description</dt>
         <dd>@(_project.Description ?? "—")</dd>
     </dl>
+
+    <section class="form-section">
+        <h2>Project members</h2>
+
+        @if (_members.Count == 0)
+        {
+            <p>No members assigned.</p>
+        }
+        else
+        {
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Responsibility / title</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var member in _members)
+                    {
+                        <tr>
+                            <td>@member.Email</td>
+                            <td>@(member.Responsibility ?? "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
 
     @if (_project.Status == ProjectStatus.Active)
     {
@@ -82,6 +129,7 @@ else
     public Guid Id { get; set; }
 
     private Application.Projects.ProjectDetails? _project;
+    private IReadOnlyList<ProjectMemberDetails> _members = [];
     private readonly List<string> _errors = [];
 
     protected override async Task OnParametersSetAsync()
@@ -92,6 +140,10 @@ else
     private async Task LoadAsync()
     {
         _project = await ProjectReader.HandleAsync(Id);
+
+        _members = _project is null
+            ? []
+            : await ProjectMembers.HandleAsync(Id);
     }
 
     private async Task CloseAsync()

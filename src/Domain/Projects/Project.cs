@@ -33,6 +33,8 @@ public sealed class Project
 
     public string Name { get; private set; } = string.Empty;
 
+    public Guid? ClientId { get; private set; }
+
     public string? Location { get; private set; }
 
     public DateOnly StartDate { get; private set; }
@@ -69,11 +71,7 @@ public sealed class Project
         DateOnly? targetCompletionDate,
         string? description)
     {
-        if (Status == ProjectStatus.Closed)
-        {
-            throw new InvalidOperationException(
-                "Closed projects cannot be updated.");
-        }
+        EnsureActive();
 
         SetDetails(
             projectNumber,
@@ -84,9 +82,32 @@ public sealed class Project
             description);
     }
 
+    public void AssignClient(Guid? clientId)
+    {
+        EnsureActive();
+
+        if (clientId == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "Client ID cannot be empty.",
+                nameof(clientId));
+        }
+
+        ClientId = clientId;
+    }
+
     public void Close()
     {
         Status = ProjectStatus.Closed;
+    }
+
+    private void EnsureActive()
+    {
+        if (Status == ProjectStatus.Closed)
+        {
+            throw new InvalidOperationException(
+                "Closed projects cannot be changed.");
+        }
     }
 
     private void SetDetails(

@@ -15,6 +15,8 @@ public sealed record ProjectDetails(
     Guid Id,
     string ProjectNumber,
     string Name,
+    Guid? ClientId,
+    string? ClientName,
     string? Location,
     DateOnly StartDate,
     DateOnly? TargetCompletionDate,
