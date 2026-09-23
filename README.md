@@ -20,25 +20,25 @@ Web ------------> Application ---> Domain
     ----> Infrastructure
 ```
 
-Infrastructure may implement interfaces owned by Application. Domain must not depend on Application, Infrastructure, or Web.
-
 ## Current milestone
 
-**Group 4 — Users, roles, and permissions**
+**Group 5 — Projects**
 
-The application now includes:
+The first construction-business vertical slice now includes:
 
-- administrator-controlled user provisioning
-- account activation/deactivation
-- role assignment
-- role creation, rename, and deletion
-- permission claims
-- permission-based authorization policies
-- reserved Administrator role
-- configuration-based first-administrator bootstrap
-- administrative Blazor pages
+- Project domain aggregate
+- project creation
+- project editing
+- project closing
+- project details
+- searchable/filterable/paginated project list
+- SQL Server persistence
+- project-number uniqueness
+- project permissions
+- Blazor project-management pages
+- Domain, Application, and integration tests
 
-Self-registration remains disabled.
+Clients and project members remain intentionally deferred to Group 6.
 
 ## Build
 
@@ -51,13 +51,11 @@ dotnet build CPM.slnx --configuration Release --no-restore
 dotnet test CPM.slnx --configuration Release --no-build
 ```
 
-Run the web application:
+Run:
 
 ```bash
 dotnet run --project src/Web/Web.csproj
 ```
-
-Development uses SQL Server LocalDB. Production must provide `ConnectionStrings__Database` through secure configuration.
 
 Apply database migrations explicitly:
 
@@ -65,14 +63,7 @@ Apply database migrations explicitly:
 dotnet ef database update --project src/Infrastructure --startup-project src/Web
 ```
 
-For first-administrator bootstrap, configure `BootstrapAdmin__Email` and `BootstrapAdmin__Password` after applying migrations, start the application once, then remove the password from runtime configuration.
-
-See:
-
-- `docs/architecture.md`
-- `docs/persistence.md`
-- `docs/authentication.md`
-- `docs/authorization.md`
+See `docs/projects.md` for the Project aggregate and use-case boundaries.
 
 ## Planned development order
 

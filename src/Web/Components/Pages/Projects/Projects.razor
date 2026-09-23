@@ -1,0 +1,150 @@
+@page "/projects"
+@attribute [Authorize(Policy = Permissions.Projects.View)]
+@inject ListProjectsHandler ProjectList
+
+<PageTitle>Projects</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <h1>Projects</h1>
+        <p>Manage construction projects and their lifecycle.</p>
+    </div>
+
+    <AuthorizeView Policy="@Permissions.Projects.Create">
+        <Authorized>
+            <a class="button-link" href="/projects/create">
+                Create project
+            </a>
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+<div class="filter-bar">
+    <input type="search"
+           placeholder="Search number, name, or location"
+           @bind="_search" />
+
+    <select @bind="_status">
+        <option value="">All statuses</option>
+        <option value="Active">Active</option>
+        <option value="Closed">Closed</option>
+    </select>
+
+    <button type="button" @onclick="ApplyFilterAsync">
+        Search
+    </button>
+</div>
+
+@if (_result is null)
+{
+    <p>Loading...</p>
+}
+else if (_result.Items.Count == 0)
+{
+    <p>No projects found.</p>
+}
+else
+{
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Project no.</th>
+                <th>Name</th>
+                <th>Location</th>
+                <th>Status</th>
+                <th>Target completion</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var project in _result.Items)
+            {
+                <tr>
+                    <td>@project.ProjectNumber</td>
+                    <td>@project.Name</td>
+                    <td>@(project.Location ?? "—")</td>
+                    <td>@project.Status</td>
+                    <td>@FormatDate(project.TargetCompletionDate)</td>
+                    <td>
+                        <a href="@($"/projects/{project.Id}")">View</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        <button type="button"
+                disabled="@(_result.Page <= 1)"
+                @onclick="PreviousPageAsync">
+            Previous
+        </button>
+
+        <span>
+            Page @_result.Page of @_result.TotalPages
+            · @_result.TotalCount total
+        </span>
+
+        <button type="button"
+                disabled="@(_result.Page >= _result.TotalPages)"
+                @onclick="NextPageAsync">
+            Next
+        </button>
+    </div>
+}
+
+@code {
+    private ProjectListResult? _result;
+    private string? _search;
+    private string _status = string.Empty;
+    private int _page = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task ApplyFilterAsync()
+    {
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        _page = Math.Max(1, _page - 1);
+        await LoadAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (_result is null)
+        {
+            return;
+        }
+
+        _page = Math.Min(_result.TotalPages, _page + 1);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        ProjectStatus? status = Enum.TryParse<ProjectStatus>(
+            _status,
+            ignoreCase: true,
+            out var parsed)
+            ? parsed
+            : null;
+
+        _result = await ProjectList.HandleAsync(
+            new ListProjectsRequest(
+                _search,
+                status,
+                _page));
+    }
+
+    private static string FormatDate(DateOnly? date)
+    {
+        return date?.ToString("dd MMM yyyy") ?? "—";
+    }
+}

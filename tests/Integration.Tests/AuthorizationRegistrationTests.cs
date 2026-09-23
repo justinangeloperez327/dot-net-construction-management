@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Application.Common.Authorization;
 using Application.Roles;
 using Application.Users;
@@ -34,6 +35,58 @@ public sealed class AuthorizationRegistrationTests
 
             Assert.NotNull(policy);
         }
+    }
+
+    [Fact]
+    public async Task Administrator_satisfies_permission_without_permission_claim()
+    {
+        using var scope = _factory.Services.CreateScope();
+
+        var authorization = scope.ServiceProvider
+            .GetRequiredService<IAuthorizationService>();
+
+        var principal = new ClaimsPrincipal(
+            new ClaimsIdentity(
+                [
+                    new Claim(
+                        ClaimTypes.Role,
+                        SystemRoles.Administrator)
+                ],
+                authenticationType: "test",
+                nameType: ClaimTypes.Name,
+                roleType: ClaimTypes.Role));
+
+        var result = await authorization.AuthorizeAsync(
+            principal,
+            resource: null,
+            Permissions.Projects.View);
+
+        Assert.True(result.Succeeded);
+    }
+
+    [Fact]
+    public async Task Permission_claim_satisfies_matching_policy()
+    {
+        using var scope = _factory.Services.CreateScope();
+
+        var authorization = scope.ServiceProvider
+            .GetRequiredService<IAuthorizationService>();
+
+        var principal = new ClaimsPrincipal(
+            new ClaimsIdentity(
+                [
+                    new Claim(
+                        PermissionClaimTypes.Permission,
+                        Permissions.Projects.View)
+                ],
+                authenticationType: "test"));
+
+        var result = await authorization.AuthorizeAsync(
+            principal,
+            resource: null,
+            Permissions.Projects.View);
+
+        Assert.True(result.Succeeded);
     }
 
     [Fact]

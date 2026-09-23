@@ -1,0 +1,116 @@
+@page "/projects/{Id:guid}/edit"
+@attribute [Authorize(Policy = Permissions.Projects.Update)]
+@inject GetProjectHandler ProjectReader
+@inject UpdateProjectHandler ProjectUpdater
+@inject NavigationManager Navigation
+
+<PageTitle>Edit project</PageTitle>
+
+@if (_notFound)
+{
+    <h1>Project not found</h1>
+}
+else if (!_loaded)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <h1>Edit project</h1>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    <EditForm Model="_model"
+              OnValidSubmit="SaveAsync"
+              class="form-grid">
+        <DataAnnotationsValidator />
+
+        <label for="project-number">Project number</label>
+        <InputText id="project-number"
+                   @bind-Value="_model.ProjectNumber" />
+
+        <label for="name">Project name</label>
+        <InputText id="name"
+                   @bind-Value="_model.Name" />
+
+        <label for="location">Location</label>
+        <InputText id="location"
+                   @bind-Value="_model.Location" />
+
+        <label for="start-date">Start date</label>
+        <InputDate id="start-date"
+                   @bind-Value="_model.StartDate" />
+
+        <label for="target-date">Target completion date</label>
+        <InputDate id="target-date"
+                   @bind-Value="_model.TargetCompletionDate" />
+
+        <label for="description">Description</label>
+        <InputTextArea id="description"
+                       @bind-Value="_model.Description" />
+
+        <button type="submit">Save changes</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private readonly ProjectFormModel _model = new();
+    private readonly List<string> _errors = [];
+    private bool _loaded;
+    private bool _notFound;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var project = await ProjectReader.HandleAsync(Id);
+
+        if (project is null)
+        {
+            _notFound = true;
+            _loaded = true;
+            return;
+        }
+
+        _notFound = false;
+        _model.ProjectNumber = project.ProjectNumber;
+        _model.Name = project.Name;
+        _model.Location = project.Location;
+        _model.StartDate = project.StartDate;
+        _model.TargetCompletionDate = project.TargetCompletionDate;
+        _model.Description = project.Description;
+        _loaded = true;
+    }
+
+    private async Task SaveAsync()
+    {
+        _errors.Clear();
+
+        var result = await ProjectUpdater.HandleAsync(
+            Id,
+            new UpdateProjectRequest(
+                _model.ProjectNumber,
+                _model.Name,
+                _model.Location,
+                _model.StartDate,
+                _model.TargetCompletionDate,
+                _model.Description));
+
+        if (result.Succeeded)
+        {
+            Navigation.NavigateTo($"/projects/{Id}");
+            return;
+        }
+
+        _errors.AddRange(result.Errors);
+    }
+}

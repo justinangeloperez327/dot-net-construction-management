@@ -20,6 +20,14 @@ public static class Permissions
         public const string ManagePermissions = "roles.manage_permissions";
     }
 
+    public static class Projects
+    {
+        public const string View = "projects.view";
+        public const string Create = "projects.create";
+        public const string Update = "projects.update";
+        public const string Close = "projects.close";
+    }
+
     public static IReadOnlyList<string> All { get; } =
     [
         Users.View,
@@ -31,7 +39,11 @@ public static class Permissions
         Roles.Create,
         Roles.Update,
         Roles.Delete,
-        Roles.ManagePermissions
+        Roles.ManagePermissions,
+        Projects.View,
+        Projects.Create,
+        Projects.Update,
+        Projects.Close
     ];
 }
 
