@@ -4,6 +4,7 @@ using Application.Roles;
 using Application.Users;
 using Infrastructure.Identity;
 using Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -75,11 +76,14 @@ public static class DependencyInjection
             {
                 options.AddPolicy(
                     permission,
-                    policy => policy.RequireClaim(
-                        PermissionClaimTypes.Permission,
-                        permission));
+                    policy => policy.AddRequirements(
+                        new PermissionRequirement(permission)));
             }
         });
+
+        services.AddSingleton<
+            IAuthorizationHandler,
+            PermissionAuthorizationHandler>();
 
         services.AddScoped<IUserAdministration, UserAdministration>();
         services.AddScoped<IRoleAdministration, RoleAdministration>();
