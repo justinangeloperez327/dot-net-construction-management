@@ -15,33 +15,29 @@ Dependencies point inward.
 
 ## Current milestone
 
-**Group 9 — File Storage and Attachments**
+**Group 10 — Document Control**
 
-Daily Site Reports now support private attachments with:
+The application now includes a project-scoped document register with:
 
-- reusable `IFileStorage` Application boundary
-- filesystem storage implementation in Infrastructure
-- attachment metadata in SQL Server
-- generated opaque storage keys
-- authenticated upload/download/delete workflows
-- JPEG, PNG, WebP, and PDF allow-list
-- 25 MB per-file limit
-- optional captions
-- uploader and upload timestamp
-- Draft/Rejected attachment editing
-- Submitted/Approved attachment locking
-- storage path traversal protection
-- download responses forced through an authorized application endpoint
+- unique document number per project
+- document title
+- flexible category
+- flexible discipline
+- originator
+- description
+- Active / Archived lifecycle
+- creator identity and registration timestamp
+- project-scoped search and status filtering
+- pagination
+- permission-controlled create/update/archive/restore
+- closed-project write protection
+- SQL Server persistence
+- Blazor document register and detail pages
+- Domain, Application, and integration tests
 
-File bytes are not stored in SQL Server and are not exposed under `wwwroot`.
+Group 10 intentionally stores the **document master record only**.
 
-The storage root is configurable through:
-
-```text
-FileStorage__RootPath
-```
-
-The default is `App_Data/uploads` under the application base directory.
+Files are not attached directly to the document master. Group 11 will add document revisions, and each revision will own its file through the existing `IFileStorage` abstraction. This avoids migrating a single document-level file model into a revision model later.
 
 ## Build
 
@@ -64,6 +60,7 @@ See:
 - `docs/daily-site-reports.md`
 - `docs/daily-report-resources.md`
 - `docs/file-storage-attachments.md`
+- `docs/document-control.md`
 
 ## Planned development order
 

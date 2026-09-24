@@ -1,0 +1,254 @@
+@page "/documents/{Id:guid}"
+@attribute [Authorize(Policy = Permissions.Documents.View)]
+@inject GetDocumentHandler DocumentReader
+@inject GetProjectHandler ProjectReader
+@inject UpdateDocumentHandler DocumentUpdater
+@inject SetDocumentArchivedHandler DocumentArchiver
+
+<PageTitle>Document</PageTitle>
+
+@if (_document is null)
+{
+    <h1>Document not found</h1>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <h1>@_document.DocumentNumber</h1>
+            <p>@_document.Title</p>
+        </div>
+
+        <a href="@($"/projects/{_document.ProjectId}/documents")">
+            Back to register
+        </a>
+    </div>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_message))
+    {
+        <p class="success-message">@_message</p>
+    }
+
+    <dl class="details-grid">
+        <dt>Status</dt>
+        <dd>@_document.Status</dd>
+
+        <dt>Category</dt>
+        <dd>@(_document.Category ?? "—")</dd>
+
+        <dt>Discipline</dt>
+        <dd>@(_document.Discipline ?? "—")</dd>
+
+        <dt>Originator</dt>
+        <dd>@(_document.Originator ?? "—")</dd>
+
+        <dt>Created by</dt>
+        <dd>@_document.CreatedBy</dd>
+
+        <dt>Registered</dt>
+        <dd>@_document.CreatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")</dd>
+
+        <dt>Description</dt>
+        <dd>@(_document.Description ?? "—")</dd>
+    </dl>
+
+    @if (CanEdit)
+    {
+        <AuthorizeView Policy="@Permissions.Documents.Update">
+            <Authorized>
+                <section class="form-section">
+                    <h2>Edit document</h2>
+
+                    <EditForm Model="_model"
+                              OnValidSubmit="SaveAsync"
+                              class="form-grid">
+                        <DataAnnotationsValidator />
+
+                        <label for="document-number">Document number</label>
+                        <InputText id="document-number"
+                                   @bind-Value="_model.DocumentNumber" />
+                        <ValidationMessage For="() => _model.DocumentNumber" />
+
+                        <label for="title">Title</label>
+                        <InputText id="title"
+                                   @bind-Value="_model.Title" />
+                        <ValidationMessage For="() => _model.Title" />
+
+                        <label for="category">Category</label>
+                        <InputText id="category"
+                                   @bind-Value="_model.Category" />
+
+                        <label for="discipline">Discipline</label>
+                        <InputText id="discipline"
+                                   @bind-Value="_model.Discipline" />
+
+                        <label for="originator">Originator</label>
+                        <InputText id="originator"
+                                   @bind-Value="_model.Originator" />
+
+                        <label for="description">Description</label>
+                        <InputTextArea id="description"
+                                       @bind-Value="_model.Description" />
+
+                        <button type="submit">Save document</button>
+                    </EditForm>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+
+    @if (_project?.Status == ProjectStatus.Active)
+    {
+        <AuthorizeView Policy="@Permissions.Documents.Archive">
+            <Authorized>
+                <section class="form-section">
+                    <h2>Document lifecycle</h2>
+
+                    @if (_document.Status == DocumentStatus.Active)
+                    {
+                        <p>Archive this master record when it is no longer in the active document register.</p>
+                        <button type="button"
+                                class="danger-button"
+                                @onclick="() => SetArchivedAsync(true)">
+                            Archive document
+                        </button>
+                    }
+                    else
+                    {
+                        <p>Restore this document to the active register.</p>
+                        <button type="button"
+                                @onclick="() => SetArchivedAsync(false)">
+                            Restore document
+                        </button>
+                    }
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Application.Documents.DocumentDetails? _document;
+    private Application.Projects.ProjectDetails? _project;
+    private readonly DocumentFormModel _model = new();
+    private readonly List<string> _errors = [];
+    private string? _message;
+
+    private bool CanEdit =>
+        _document?.Status == DocumentStatus.Active &&
+        _project?.Status == ProjectStatus.Active;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _document = await DocumentReader.HandleAsync(Id);
+
+        if (_document is null)
+        {
+            _project = null;
+            return;
+        }
+
+        _project = await ProjectReader.HandleAsync(
+            _document.ProjectId);
+
+        _model.DocumentNumber = _document.DocumentNumber;
+        _model.Title = _document.Title;
+        _model.Category = _document.Category;
+        _model.Discipline = _document.Discipline;
+        _model.Originator = _document.Originator;
+        _model.Description = _document.Description;
+    }
+
+    private async Task SaveAsync()
+    {
+        ClearFeedback();
+
+        var result = await DocumentUpdater.HandleAsync(
+            Id,
+            new UpdateDocumentRequest(
+                _model.DocumentNumber,
+                _model.Title,
+                _model.Category,
+                _model.Discipline,
+                _model.Originator,
+                _model.Description));
+
+        await HandleAsync(result, "Document updated.");
+    }
+
+    private async Task SetArchivedAsync(bool archived)
+    {
+        ClearFeedback();
+
+        var result = await DocumentArchiver.HandleAsync(
+            Id,
+            archived);
+
+        await HandleAsync(
+            result,
+            archived
+                ? "Document archived."
+                : "Document restored.");
+    }
+
+    private async Task HandleAsync(
+        DocumentActionResult result,
+        string message)
+    {
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        _message = message;
+        await LoadAsync();
+    }
+
+    private void ClearFeedback()
+    {
+        _errors.Clear();
+        _message = null;
+    }
+
+    private sealed class DocumentFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string DocumentNumber { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(300)]
+        public string Title { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string? Category { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string? Discipline { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(200)]
+        public string? Originator { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(2000)]
+        public string? Description { get; set; }
+    }
+}
