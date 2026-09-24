@@ -2,6 +2,7 @@ using Application;
 using Application.Common.Authentication;
 using Application.Common.Authorization;
 using Application.DailyReports;
+using Application.Documents;
 using Infrastructure;
 using Infrastructure.Identity;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -74,6 +75,29 @@ app.MapGet(
                     enableRangeProcessing: true);
         })
     .RequireAuthorization(Permissions.DailyReports.View);
+
+app.MapGet(
+        "/files/documents/{documentId:guid}/revisions/{revisionId:guid}",
+        async (
+            Guid documentId,
+            Guid revisionId,
+            GetDocumentRevisionFileHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var file = await handler.HandleAsync(
+                documentId,
+                revisionId,
+                cancellationToken);
+
+            return file is null
+                ? Results.NotFound()
+                : Results.File(
+                    file.Content,
+                    contentType: file.ContentType,
+                    fileDownloadName: file.FileName,
+                    enableRangeProcessing: true);
+        })
+    .RequireAuthorization(Permissions.Documents.View);
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

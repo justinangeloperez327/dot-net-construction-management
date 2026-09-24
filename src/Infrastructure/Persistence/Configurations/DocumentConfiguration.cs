@@ -58,5 +58,13 @@ public sealed class DocumentConfiguration
             .WithMany()
             .HasForeignKey(document => document.CreatedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasMany(document => document.Revisions)
+            .WithOne()
+            .HasForeignKey(revision => revision.DocumentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(document => document.Revisions)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

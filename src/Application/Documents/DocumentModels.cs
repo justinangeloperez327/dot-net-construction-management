@@ -22,7 +22,8 @@ public sealed record DocumentDetails(
     string? Description,
     DocumentStatus Status,
     string CreatedBy,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    IReadOnlyList<DocumentRevisionDetails> Revisions);
 
 public sealed record DocumentListResult(
     IReadOnlyList<DocumentSummary> Items,

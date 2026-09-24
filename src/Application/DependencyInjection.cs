@@ -61,6 +61,10 @@ public static class DependencyInjection
         services.AddScoped<SetDocumentArchivedHandler>();
         services.AddScoped<GetDocumentHandler>();
         services.AddScoped<ListDocumentsHandler>();
+        services.AddScoped<CreateDocumentRevisionHandler>();
+        services.AddScoped<SubmitDocumentRevisionHandler>();
+        services.AddScoped<ReviewDocumentRevisionHandler>();
+        services.AddScoped<GetDocumentRevisionFileHandler>();
 
         return services;
     }

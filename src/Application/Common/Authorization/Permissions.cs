@@ -52,6 +52,9 @@ public static class Permissions
         public const string Create = "documents.create";
         public const string Update = "documents.update";
         public const string Archive = "documents.archive";
+        public const string CreateRevision = "documents.revisions.create";
+        public const string SubmitRevision = "documents.revisions.submit";
+        public const string ReviewRevision = "documents.revisions.review";
     }
 
     public static IReadOnlyList<string> All { get; } =
@@ -83,7 +86,10 @@ public static class Permissions
         Documents.View,
         Documents.Create,
         Documents.Update,
-        Documents.Archive
+        Documents.Archive,
+        Documents.CreateRevision,
+        Documents.SubmitRevision,
+        Documents.ReviewRevision
     ];
 }
 

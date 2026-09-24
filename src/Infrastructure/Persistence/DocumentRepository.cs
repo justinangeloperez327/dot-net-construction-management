@@ -13,6 +13,7 @@ public sealed class DocumentRepository(
         CancellationToken cancellationToken = default)
     {
         return dbContext.Documents
+            .Include(document => document.Revisions)
             .SingleOrDefaultAsync(
                 document => document.Id == documentId,
                 cancellationToken);
