@@ -292,7 +292,7 @@ else
     [Parameter]
     public Guid Id { get; set; }
 
-    private PurchaseRequestDetails? _request;
+    private Application.PurchaseRequests.PurchaseRequestDetails? _request;
     private Application.Projects.ProjectDetails? _project;
     private IReadOnlyList<UserDirectoryEntry> _approvers = [];
     private readonly PurchaseRequestFormModel _header = new();
