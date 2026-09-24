@@ -1,0 +1,239 @@
+@page "/approvals/{Id:guid}"
+@attribute [Authorize(Policy = Permissions.Approvals.View)]
+@inject GetApprovalRequestHandler ApprovalReader
+@inject DecideApprovalStepHandler ApprovalDecider
+@inject CancelApprovalRequestHandler ApprovalCanceller
+
+<PageTitle>Approval request</PageTitle>
+
+@if (_request is null)
+{
+    <h1>Approval request not found</h1>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <h1>@_request.Reference</h1>
+            <p>@_request.Title</p>
+        </div>
+
+        <a href="/approvals">Back to approvals</a>
+    </div>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_message))
+    {
+        <p class="success-message">@_message</p>
+    }
+
+    <dl class="details-grid">
+        <dt>Status</dt>
+        <dd>@_request.Status</dd>
+
+        <dt>Subject type</dt>
+        <dd>@_request.SubjectType</dd>
+
+        <dt>Subject ID</dt>
+        <dd>@_request.SubjectId</dd>
+
+        <dt>Project ID</dt>
+        <dd>@(_request.ProjectId?.ToString() ?? "—")</dd>
+
+        <dt>Requested by</dt>
+        <dd>@_request.RequestedBy</dd>
+
+        <dt>Requested</dt>
+        <dd>@_request.RequestedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")</dd>
+
+        <dt>Completed</dt>
+        <dd>@(_request.CompletedAt?.ToLocalTime().ToString("dd MMM yyyy HH:mm") ?? "—")</dd>
+
+        <dt>Description</dt>
+        <dd>@(_request.Description ?? "—")</dd>
+
+        @if (_request.Status == ApprovalRequestStatus.Cancelled)
+        {
+            <dt>Cancellation reason</dt>
+            <dd>@(_request.CancellationReason ?? "—")</dd>
+        }
+    </dl>
+
+    <section class="form-section">
+        <h2>Approval steps</h2>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Step</th>
+                    <th>Approver</th>
+                    <th>Status</th>
+                    <th>Decision time</th>
+                    <th>Comments</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var step in _request.Steps)
+                {
+                    <tr>
+                        <td>@step.StepNumber. @step.Name</td>
+                        <td>@step.Approver</td>
+                        <td>@step.Status</td>
+                        <td>@(step.DecidedAt?.ToLocalTime().ToString("dd MMM yyyy HH:mm") ?? "—")</td>
+                        <td>@(step.Comments ?? "—")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
+
+    @if (_request.CanDecideCurrentStep &&
+         CurrentStep is not null)
+    {
+        <AuthorizeView Policy="@Permissions.Approvals.Decide">
+            <Authorized Context="authorizationState">
+                <section class="form-section">
+                    <h2>Decision · @CurrentStep.Name</h2>
+
+                    <div class="form-grid">
+                        <label for="decision-comments">Comments</label>
+                        <textarea id="decision-comments"
+                                  maxlength="2000"
+                                  @bind="_decisionComments"></textarea>
+
+                        <div class="page-actions">
+                            <button type="button"
+                                    @onclick="() => DecideAsync(ApprovalStepDecision.Approve)">
+                                Approve
+                            </button>
+
+                            <button type="button"
+                                    class="danger-button"
+                                    @onclick="() => DecideAsync(ApprovalStepDecision.Reject)">
+                                Reject
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+
+    @if (_request.CanCancel)
+    {
+        <AuthorizeView Policy="@Permissions.Approvals.Cancel">
+            <Authorized Context="authorizationState">
+                <section class="danger-zone">
+                    <h2>Cancel approval request</h2>
+
+                    <div class="form-grid">
+                        <label for="cancellation-reason">Reason</label>
+                        <textarea id="cancellation-reason"
+                                  maxlength="1000"
+                                  @bind="_cancellationReason"></textarea>
+
+                        <button type="button"
+                                class="danger-button"
+                                @onclick="CancelAsync">
+                            Cancel request
+                        </button>
+                    </div>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private ApprovalRequestDetails? _request;
+    private string? _decisionComments;
+    private string? _cancellationReason;
+    private readonly List<string> _errors = [];
+    private string? _message;
+
+    private ApprovalStepDetails? CurrentStep =>
+        _request?.Steps.FirstOrDefault(
+            step => step.Status == ApprovalStepStatus.Pending);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task DecideAsync(
+        ApprovalStepDecision decision)
+    {
+        if (CurrentStep is null)
+        {
+            return;
+        }
+
+        ClearFeedback();
+
+        var result = await ApprovalDecider.HandleAsync(
+            Id,
+            CurrentStep.Id,
+            new DecideApprovalStepCommand(
+                decision,
+                _decisionComments));
+
+        await HandleAsync(
+            result,
+            decision == ApprovalStepDecision.Approve
+                ? "Approval step approved."
+                : "Approval request rejected.");
+    }
+
+    private async Task CancelAsync()
+    {
+        ClearFeedback();
+
+        var result = await ApprovalCanceller.HandleAsync(
+            Id,
+            _cancellationReason);
+
+        await HandleAsync(
+            result,
+            "Approval request cancelled.");
+    }
+
+    private async Task HandleAsync(
+        ApprovalActionResult result,
+        string message)
+    {
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        _decisionComments = null;
+        _cancellationReason = null;
+        _message = message;
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _request = await ApprovalReader.HandleAsync(Id);
+    }
+
+    private void ClearFeedback()
+    {
+        _errors.Clear();
+        _message = null;
+    }
+}

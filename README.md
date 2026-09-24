@@ -15,29 +15,31 @@ Dependencies point inward.
 
 ## Current milestone
 
-**Group 11 — Document Revisions and Review**
+**Group 12 — Approval Workflow**
 
-Document Control now supports immutable revision history:
+The application now has a reusable sequential approval engine for upcoming procurement and commercial workflows.
 
-- free-form revision codes such as `00`, `01`, `A`, and `P01`
-- one immutable file per revision
-- optional change summary
-- Draft → Submitted review workflow
-- Approved
-- Approved With Comments
-- Rejected
-- automatic Superseded state for previously approved revisions
-- creator, submitter, reviewer, and timestamps
-- review comments
-- authorized revision downloads
-- project/document lifecycle protection
+It supports:
+
+- generic approval requests linked to a subject type + subject ID
+- optional project context
+- immutable ordered approval steps
+- explicitly assigned approvers
+- one active step at a time
+- approve / reject decisions
+- mandatory rejection comments
+- automatic activation of the next step
+- automatic request completion after the final approval
+- requester cancellation
+- participant-scoped approval inbox
+- pending-decision visibility
 - SQL Server persistence
-- Blazor revision register and review UI
+- Blazor approval inbox and detail UI
 - Domain, Application, and integration tests
 
-Revision files reuse the `IFileStorage` abstraction introduced in Group 9.
+Group 12 intentionally does **not** add workflow templates, parallel approvals, delegation, escalation timers, or a visual workflow designer. Those should be introduced only when real Purchase Request, Purchase Order, and commercial workflows require them.
 
-A rejected or approved revision is never overwritten. Corrections are represented by a new revision.
+Daily Reports and Document Revisions keep their existing domain-specific review state. They are not rewritten onto this generic engine.
 
 ## Build
 
@@ -56,12 +58,7 @@ Apply database migrations explicitly:
 dotnet ef database update --project src/Infrastructure --startup-project src/Web
 ```
 
-See:
-- `docs/daily-site-reports.md`
-- `docs/daily-report-resources.md`
-- `docs/file-storage-attachments.md`
-- `docs/document-control.md`
-- `docs/document-revisions-review.md`
+See `docs/approval-workflow.md`.
 
 ## Planned development order
 
