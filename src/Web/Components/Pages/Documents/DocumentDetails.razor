@@ -83,7 +83,8 @@ else
 
                     <EditForm Model="_model"
                               OnValidSubmit="SaveAsync"
-                              class="form-grid">
+                              class="form-grid"
+                              Context="documentEditContext">
                         <DataAnnotationsValidator />
 
                         <label for="document-number">Document number</label>
