@@ -1,4 +1,5 @@
 using Domain.Clients;
+using Domain.DailyReports;
 using Domain.Projects;
 using Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
@@ -16,6 +17,11 @@ public sealed class ApplicationDbContext(
     public DbSet<Project> Projects => Set<Project>();
 
     public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
+
+    public DbSet<DailyReport> DailyReports => Set<DailyReport>();
+
+    public DbSet<DailyReportActivity> DailyReportActivities =>
+        Set<DailyReportActivity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

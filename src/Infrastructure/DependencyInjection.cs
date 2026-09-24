@@ -1,5 +1,6 @@
 using Application.Clients;
 using Application.Common.Authorization;
+using Application.DailyReports;
 using Application.Projects;
 using Application.Roles;
 using Application.Users;
@@ -93,6 +94,7 @@ public static class DependencyInjection
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<IProjectMemberRepository, ProjectMemberRepository>();
+        services.AddScoped<IDailyReportRepository, DailyReportRepository>();
 
         services
             .AddHealthChecks()
