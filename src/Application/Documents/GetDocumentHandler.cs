@@ -19,14 +19,34 @@ public sealed class GetDocumentHandler(
             return null;
         }
 
+        var userIds = new HashSet<Guid>
+        {
+            document.CreatedByUserId
+        };
+
+        foreach (var revision in document.Revisions)
+        {
+            userIds.Add(revision.CreatedByUserId);
+
+            if (revision.SubmittedByUserId is Guid submittedBy)
+            {
+                userIds.Add(submittedBy);
+            }
+
+            if (revision.ReviewedByUserId is Guid reviewedBy)
+            {
+                userIds.Add(reviewedBy);
+            }
+        }
+
         var directory = await users.ListByIdsAsync(
-            [document.CreatedByUserId],
+            userIds.ToArray(),
             cancellationToken);
 
-        var createdBy = directory
-            .SingleOrDefault(
-                user => user.Id == document.CreatedByUserId)
-            ?.Email
+        var usersById = directory.ToDictionary(user => user.Id);
+
+        string UserName(Guid userId) =>
+            usersById.GetValueOrDefault(userId)?.Email
             ?? "Unknown user";
 
         return new DocumentDetails(
@@ -39,7 +59,29 @@ public sealed class GetDocumentHandler(
             document.Originator,
             document.Description,
             document.Status,
-            createdBy,
-            document.CreatedAt);
+            UserName(document.CreatedByUserId),
+            document.CreatedAt,
+            document.Revisions
+                .OrderByDescending(revision => revision.CreatedAt)
+                .Select(revision => new DocumentRevisionDetails(
+                    revision.Id,
+                    revision.RevisionCode,
+                    revision.ChangeSummary,
+                    revision.Status,
+                    revision.FileName,
+                    revision.ContentType,
+                    revision.SizeBytes,
+                    UserName(revision.CreatedByUserId),
+                    revision.CreatedAt,
+                    revision.SubmittedByUserId is Guid submittedBy
+                        ? UserName(submittedBy)
+                        : null,
+                    revision.SubmittedAt,
+                    revision.ReviewedByUserId is Guid reviewedBy
+                        ? UserName(reviewedBy)
+                        : null,
+                    revision.ReviewedAt,
+                    revision.ReviewComments))
+                .ToArray());
     }
 }

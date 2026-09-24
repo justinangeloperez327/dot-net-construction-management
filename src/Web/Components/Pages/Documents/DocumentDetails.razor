@@ -19,9 +19,15 @@ else
             <p>@_document.Title</p>
         </div>
 
-        <a href="@($"/projects/{_document.ProjectId}/documents")">
-            Back to register
-        </a>
+        <div class="page-actions">
+            <a class="button-link"
+               href="@($"/documents/{Id}/revisions")">
+                Revisions
+            </a>
+            <a href="@($"/projects/{_document.ProjectId}/documents")">
+                Back to register
+            </a>
+        </div>
     </div>
 
     @if (_errors.Count > 0)
@@ -60,6 +66,12 @@ else
 
         <dt>Description</dt>
         <dd>@(_document.Description ?? "—")</dd>
+
+        <dt>Revisions</dt>
+        <dd>@_document.Revisions.Count</dd>
+
+        <dt>Current revision</dt>
+        <dd>@CurrentRevisionText</dd>
     </dl>
 
     @if (CanEdit)
@@ -150,6 +162,14 @@ else
     private bool CanEdit =>
         _document?.Status == DocumentStatus.Active &&
         _project?.Status == ProjectStatus.Active;
+
+    private string CurrentRevisionText =>
+        _document?.Revisions
+            .FirstOrDefault(revision =>
+                revision.Status is DocumentRevisionStatus.Approved
+                    or DocumentRevisionStatus.ApprovedWithComments)
+            ?.RevisionCode
+        ?? "—";
 
     protected override async Task OnParametersSetAsync()
     {

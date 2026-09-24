@@ -38,6 +38,9 @@ public sealed class ApplicationDbContext(
 
     public DbSet<Document> Documents => Set<Document>();
 
+    public DbSet<DocumentRevision> DocumentRevisions =>
+        Set<DocumentRevision>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

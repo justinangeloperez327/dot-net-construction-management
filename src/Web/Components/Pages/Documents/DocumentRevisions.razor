@@ -1,0 +1,423 @@
+@page "/documents/{Id:guid}/revisions"
+@using Application.Common.Files
+@attribute [Authorize(Policy = Permissions.Documents.View)]
+@inject GetDocumentHandler DocumentReader
+@inject GetProjectHandler ProjectReader
+@inject CreateDocumentRevisionHandler RevisionCreator
+@inject SubmitDocumentRevisionHandler RevisionSubmitter
+@inject ReviewDocumentRevisionHandler RevisionReviewer
+
+<PageTitle>Document revisions</PageTitle>
+
+@if (_document is null)
+{
+    <h1>Document not found</h1>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <h1>Document revisions</h1>
+            <p>@_document.DocumentNumber · @_document.Title</p>
+        </div>
+
+        <a href="@($"/documents/{Id}")">
+            Back to document
+        </a>
+    </div>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_message))
+    {
+        <p class="success-message">@_message</p>
+    }
+
+    @if (CanCreateRevision)
+    {
+        <AuthorizeView Policy="@Permissions.Documents.CreateRevision">
+            <Authorized Context="authorizationState">
+                <section class="form-section">
+                    <h2>Add revision</h2>
+
+                    <EditForm Model="_newRevision"
+                              OnValidSubmit="CreateRevisionAsync"
+                              class="form-grid"
+                              Context="revisionContext">
+                        <DataAnnotationsValidator />
+
+                        <label for="revision-code">Revision code</label>
+                        <InputText id="revision-code"
+                                   @bind-Value="_newRevision.RevisionCode" />
+                        <ValidationMessage For="() => _newRevision.RevisionCode" />
+
+                        <label for="change-summary">Change summary</label>
+                        <InputTextArea id="change-summary"
+                                       @bind-Value="_newRevision.ChangeSummary" />
+
+                        <label for="revision-file">Revision file</label>
+                        <InputFile id="revision-file"
+                                   OnChange="SelectFile"
+                                   accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf" />
+
+                        @if (_selectedFile is not null)
+                        {
+                            <p>
+                                @_selectedFile.Name
+                                · @FormatSize(_selectedFile.Size)
+                            </p>
+                        }
+
+                        <p>
+                            JPEG, PNG, WebP, or PDF.
+                            Maximum @FormatSize(FileUploadPolicy.MaxFileSizeBytes).
+                        </p>
+
+                        <button type="submit"
+                                disabled="@(_selectedFile is null)">
+                            Add revision
+                        </button>
+                    </EditForm>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+    else if (_document.Status == DocumentStatus.Active &&
+             _project?.Status == ProjectStatus.Active &&
+             HasOpenRevision)
+    {
+        <p>
+            Complete the current draft or submitted revision before adding another revision.
+        </p>
+    }
+
+    <section class="form-section">
+        <h2>Revision history</h2>
+
+        @if (_document.Revisions.Count == 0)
+        {
+            <p>No revisions registered.</p>
+        }
+        else
+        {
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Revision</th>
+                        <th>Status</th>
+                        <th>Change summary</th>
+                        <th>File</th>
+                        <th>Created</th>
+                        <th>Submitted</th>
+                        <th>Reviewed</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var revision in _document.Revisions)
+                    {
+                        <tr>
+                            <td>@revision.RevisionCode</td>
+                            <td>@FormatStatus(revision.Status)</td>
+                            <td>@(revision.ChangeSummary ?? "—")</td>
+                            <td>
+                                <a href="@($"/files/documents/{Id}/revisions/{revision.Id}")">
+                                    @revision.FileName
+                                </a>
+                                <div>@FormatSize(revision.SizeBytes)</div>
+                            </td>
+                            <td>
+                                @revision.CreatedBy
+                                <br />
+                                @revision.CreatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")
+                            </td>
+                            <td>
+                                @(revision.SubmittedBy ?? "—")
+                                @if (revision.SubmittedAt is not null)
+                                {
+                                    <br />
+                                    @revision.SubmittedAt.Value.ToLocalTime().ToString("dd MMM yyyy HH:mm")
+                                }
+                            </td>
+                            <td>
+                                @(revision.ReviewedBy ?? "—")
+                                @if (revision.ReviewedAt is not null)
+                                {
+                                    <br />
+                                    @revision.ReviewedAt.Value.ToLocalTime().ToString("dd MMM yyyy HH:mm")
+                                }
+                                @if (!string.IsNullOrWhiteSpace(revision.ReviewComments))
+                                {
+                                    <div>@revision.ReviewComments</div>
+                                }
+                            </td>
+                            <td>
+                                @if (CanChangeWorkflow &&
+                                     revision.Status == DocumentRevisionStatus.Draft)
+                                {
+                                    <AuthorizeView Policy="@Permissions.Documents.SubmitRevision">
+                                        <Authorized>
+                                            <button type="button"
+                                                    @onclick="() => SubmitAsync(revision.Id)">
+                                                Submit
+                                            </button>
+                                        </Authorized>
+                                    </AuthorizeView>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+
+    @if (SubmittedRevision is not null &&
+         CanChangeWorkflow)
+    {
+        <AuthorizeView Policy="@Permissions.Documents.ReviewRevision">
+            <Authorized Context="authorizationState">
+                <section class="form-section">
+                    <h2>Review revision @SubmittedRevision.RevisionCode</h2>
+
+                    <div class="form-grid">
+                        <label for="review-comments">Review comments</label>
+                        <textarea id="review-comments"
+                                  maxlength="2000"
+                                  @bind="_reviewComments"></textarea>
+
+                        <div class="page-actions">
+                            <button type="button"
+                                    @onclick="() => ReviewAsync(DocumentRevisionReviewDecision.Approve)">
+                                Approve
+                            </button>
+
+                            <button type="button"
+                                    @onclick="() => ReviewAsync(DocumentRevisionReviewDecision.ApproveWithComments)">
+                                Approve with comments
+                            </button>
+
+                            <button type="button"
+                                    class="danger-button"
+                                    @onclick="() => ReviewAsync(DocumentRevisionReviewDecision.Reject)">
+                                Reject
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Application.Documents.DocumentDetails? _document;
+    private Application.Projects.ProjectDetails? _project;
+    private readonly RevisionFormModel _newRevision = new();
+    private IBrowserFile? _selectedFile;
+    private string? _reviewComments;
+    private readonly List<string> _errors = [];
+    private string? _message;
+
+    private bool HasOpenRevision =>
+        _document?.Revisions.Any(revision =>
+            revision.Status is DocumentRevisionStatus.Draft
+                or DocumentRevisionStatus.Submitted) == true;
+
+    private bool CanCreateRevision =>
+        _document?.Status == DocumentStatus.Active &&
+        _project?.Status == ProjectStatus.Active &&
+        !HasOpenRevision;
+
+    private bool CanChangeWorkflow =>
+        _document?.Status == DocumentStatus.Active &&
+        _project?.Status == ProjectStatus.Active;
+
+    private DocumentRevisionDetails? SubmittedRevision =>
+        _document?.Revisions.FirstOrDefault(
+            revision => revision.Status ==
+                DocumentRevisionStatus.Submitted);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private void SelectFile(InputFileChangeEventArgs eventArgs)
+    {
+        ClearFeedback();
+        _selectedFile = eventArgs.File;
+
+        var error = FileUploadPolicy.ValidateAndGetExtension(
+            _selectedFile.Name,
+            _selectedFile.ContentType,
+            _selectedFile.Size);
+
+        if (error is not null)
+        {
+            _errors.Add(error);
+            _selectedFile = null;
+        }
+    }
+
+    private async Task CreateRevisionAsync()
+    {
+        if (_selectedFile is null)
+        {
+            return;
+        }
+
+        ClearFeedback();
+
+        try
+        {
+            await using var content = _selectedFile.OpenReadStream(
+                FileUploadPolicy.MaxFileSizeBytes);
+
+            var result = await RevisionCreator.HandleAsync(
+                Id,
+                new CreateDocumentRevisionRequest(
+                    _newRevision.RevisionCode,
+                    _newRevision.ChangeSummary,
+                    _selectedFile.Name,
+                    _selectedFile.ContentType,
+                    _selectedFile.Size,
+                    content));
+
+            if (!result.Succeeded)
+            {
+                _errors.AddRange(result.Errors);
+                return;
+            }
+
+            _newRevision.Reset();
+            _selectedFile = null;
+            _message = "Revision added as draft.";
+            await LoadAsync();
+        }
+        catch (IOException)
+        {
+            _errors.Add("The revision file could not be read.");
+        }
+    }
+
+    private async Task SubmitAsync(Guid revisionId)
+    {
+        ClearFeedback();
+
+        var result = await RevisionSubmitter.HandleAsync(
+            Id,
+            revisionId);
+
+        await HandleAsync(
+            result,
+            "Revision submitted for review.");
+    }
+
+    private async Task ReviewAsync(
+        DocumentRevisionReviewDecision decision)
+    {
+        if (SubmittedRevision is null)
+        {
+            return;
+        }
+
+        ClearFeedback();
+
+        var result = await RevisionReviewer.HandleAsync(
+            Id,
+            SubmittedRevision.Id,
+            new ReviewDocumentRevisionRequest(
+                decision,
+                _reviewComments));
+
+        await HandleAsync(
+            result,
+            decision switch
+            {
+                DocumentRevisionReviewDecision.Approve =>
+                    "Revision approved.",
+                DocumentRevisionReviewDecision.ApproveWithComments =>
+                    "Revision approved with comments.",
+                _ => "Revision rejected."
+            });
+    }
+
+    private async Task HandleAsync(
+        DocumentActionResult result,
+        string message)
+    {
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        _reviewComments = null;
+        _message = message;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _document = await DocumentReader.HandleAsync(Id);
+
+        _project = _document is null
+            ? null
+            : await ProjectReader.HandleAsync(_document.ProjectId);
+    }
+
+    private void ClearFeedback()
+    {
+        _errors.Clear();
+        _message = null;
+    }
+
+    private static string FormatStatus(
+        DocumentRevisionStatus status) =>
+        status == DocumentRevisionStatus.ApprovedWithComments
+            ? "Approved with comments"
+            : status.ToString();
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes >= 1024L * 1024)
+        {
+            return $"{bytes / (1024d * 1024d):0.##} MB";
+        }
+
+        if (bytes >= 1024)
+        {
+            return $"{bytes / 1024d:0.##} KB";
+        }
+
+        return $"{bytes} B";
+    }
+
+    private sealed class RevisionFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(50)]
+        public string RevisionCode { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.StringLength(1000)]
+        public string? ChangeSummary { get; set; }
+
+        public void Reset()
+        {
+            RevisionCode = string.Empty;
+            ChangeSummary = null;
+        }
+    }
+}

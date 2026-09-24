@@ -15,29 +15,29 @@ Dependencies point inward.
 
 ## Current milestone
 
-**Group 10 — Document Control**
+**Group 11 — Document Revisions and Review**
 
-The application now includes a project-scoped document register with:
+Document Control now supports immutable revision history:
 
-- unique document number per project
-- document title
-- flexible category
-- flexible discipline
-- originator
-- description
-- Active / Archived lifecycle
-- creator identity and registration timestamp
-- project-scoped search and status filtering
-- pagination
-- permission-controlled create/update/archive/restore
-- closed-project write protection
+- free-form revision codes such as `00`, `01`, `A`, and `P01`
+- one immutable file per revision
+- optional change summary
+- Draft → Submitted review workflow
+- Approved
+- Approved With Comments
+- Rejected
+- automatic Superseded state for previously approved revisions
+- creator, submitter, reviewer, and timestamps
+- review comments
+- authorized revision downloads
+- project/document lifecycle protection
 - SQL Server persistence
-- Blazor document register and detail pages
+- Blazor revision register and review UI
 - Domain, Application, and integration tests
 
-Group 10 intentionally stores the **document master record only**.
+Revision files reuse the `IFileStorage` abstraction introduced in Group 9.
 
-Files are not attached directly to the document master. Group 11 will add document revisions, and each revision will own its file through the existing `IFileStorage` abstraction. This avoids migrating a single document-level file model into a revision model later.
+A rejected or approved revision is never overwritten. Corrections are represented by a new revision.
 
 ## Build
 
@@ -61,6 +61,7 @@ See:
 - `docs/daily-report-resources.md`
 - `docs/file-storage-attachments.md`
 - `docs/document-control.md`
+- `docs/document-revisions-review.md`
 
 ## Planned development order
 

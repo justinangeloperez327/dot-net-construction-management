@@ -2,6 +2,8 @@ namespace Domain.Documents;
 
 public sealed class Document
 {
+    private readonly List<DocumentRevision> _revisions = [];
+
     private Document()
     {
     }
@@ -68,6 +70,9 @@ public sealed class Document
 
     public DateTimeOffset CreatedAt { get; private set; }
 
+    public IReadOnlyCollection<DocumentRevision> Revisions =>
+        _revisions;
+
     public static Document Create(
         Guid projectId,
         string documentNumber,
@@ -110,8 +115,106 @@ public sealed class Document
             description);
     }
 
+    public DocumentRevision AddRevision(
+        Guid revisionId,
+        string revisionCode,
+        string? changeSummary,
+        string storageKey,
+        string fileName,
+        string contentType,
+        long sizeBytes,
+        Guid createdByUserId,
+        DateTimeOffset createdAt)
+    {
+        EnsureActive();
+
+        revisionCode = revisionCode.Trim();
+
+        if (_revisions.Any(revision =>
+                string.Equals(
+                    revision.RevisionCode,
+                    revisionCode,
+                    StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException(
+                "This revision code already exists for the document.");
+        }
+
+        if (_revisions.Any(revision =>
+                revision.Status is DocumentRevisionStatus.Draft
+                    or DocumentRevisionStatus.Submitted))
+        {
+            throw new InvalidOperationException(
+                "Complete the current draft or submitted revision before creating another revision.");
+        }
+
+        var revision = new DocumentRevision(
+            revisionId,
+            Id,
+            revisionCode,
+            changeSummary,
+            storageKey,
+            fileName,
+            contentType,
+            sizeBytes,
+            createdByUserId,
+            createdAt);
+
+        _revisions.Add(revision);
+
+        return revision;
+    }
+
+    public void SubmitRevision(
+        Guid revisionId,
+        Guid submittedByUserId,
+        DateTimeOffset submittedAt)
+    {
+        EnsureActive();
+
+        FindRevision(revisionId).Submit(
+            submittedByUserId,
+            submittedAt);
+    }
+
+    public void ReviewRevision(
+        Guid revisionId,
+        DocumentRevisionReviewDecision decision,
+        Guid reviewedByUserId,
+        DateTimeOffset reviewedAt,
+        string? comments)
+    {
+        EnsureActive();
+
+        var revision = FindRevision(revisionId);
+
+        revision.Review(
+            decision,
+            reviewedByUserId,
+            reviewedAt,
+            comments);
+
+        if (revision.Status is DocumentRevisionStatus.Approved
+            or DocumentRevisionStatus.ApprovedWithComments)
+        {
+            foreach (var previous in _revisions.Where(
+                         item => item.Id != revision.Id))
+            {
+                previous.MarkSuperseded();
+            }
+        }
+    }
+
     public void Archive()
     {
+        if (_revisions.Any(revision =>
+                revision.Status is DocumentRevisionStatus.Draft
+                    or DocumentRevisionStatus.Submitted))
+        {
+            throw new InvalidOperationException(
+                "A document with a draft or submitted revision cannot be archived.");
+        }
+
         Status = DocumentStatus.Archived;
     }
 
@@ -119,6 +222,12 @@ public sealed class Document
     {
         Status = DocumentStatus.Active;
     }
+
+    private DocumentRevision FindRevision(Guid revisionId) =>
+        _revisions.SingleOrDefault(
+            revision => revision.Id == revisionId)
+        ?? throw new InvalidOperationException(
+            "Document revision was not found.");
 
     private void SetDetails(
         string documentNumber,
@@ -158,7 +267,7 @@ public sealed class Document
         if (Status == DocumentStatus.Archived)
         {
             throw new InvalidOperationException(
-                "Archived documents cannot be edited.");
+                "Archived documents cannot be changed.");
         }
     }
 

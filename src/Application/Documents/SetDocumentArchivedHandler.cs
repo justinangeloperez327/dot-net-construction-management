@@ -38,17 +38,24 @@ public sealed class SetDocumentArchivedHandler(
                 "Documents in a closed project cannot be changed.");
         }
 
-        if (archived)
+        try
         {
-            document.Archive();
+            if (archived)
+            {
+                document.Archive();
+            }
+            else
+            {
+                document.Restore();
+            }
+
+            await documents.SaveChangesAsync(cancellationToken);
+
+            return DocumentActionResult.Success(document.Id);
         }
-        else
+        catch (InvalidOperationException exception)
         {
-            document.Restore();
+            return DocumentActionResult.Failure(exception.Message);
         }
-
-        await documents.SaveChangesAsync(cancellationToken);
-
-        return DocumentActionResult.Success(document.Id);
     }
 }
