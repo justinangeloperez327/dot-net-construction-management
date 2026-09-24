@@ -1,0 +1,154 @@
+@page "/suppliers"
+@attribute [Authorize(Policy = Permissions.Suppliers.View)]
+@inject ListSuppliersHandler SupplierList
+
+<PageTitle>Suppliers</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <h1>Suppliers</h1>
+        <p>Manage the company supplier master used by procurement.</p>
+    </div>
+
+    <AuthorizeView Policy="@Permissions.Suppliers.Create">
+        <Authorized>
+            <a class="button-link" href="/suppliers/create">
+                Create supplier
+            </a>
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+<div class="filter-bar">
+    <input type="search"
+           placeholder="Search code, name, category, contact, email, registration, or tax number"
+           @bind="_search" />
+
+    <select @bind="_activeFilter">
+        <option value="">All statuses</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+    </select>
+
+    <button type="button" @onclick="ApplyFilterAsync">
+        Search
+    </button>
+</div>
+
+@if (_result is null)
+{
+    <p>Loading...</p>
+}
+else if (_result.Items.Count == 0)
+{
+    <p>No suppliers found.</p>
+}
+else
+{
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Code</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Contact</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var supplier in _result.Items)
+            {
+                <tr>
+                    <td>@supplier.SupplierCode</td>
+                    <td>@supplier.Name</td>
+                    <td>@(supplier.Category ?? "—")</td>
+                    <td>@(supplier.ContactPerson ?? "—")</td>
+                    <td>@(supplier.Email ?? "—")</td>
+                    <td>@(supplier.Phone ?? "—")</td>
+                    <td>@(supplier.IsActive ? "Active" : "Inactive")</td>
+                    <td>
+                        <a href="@($"/suppliers/{supplier.Id}")">
+                            View
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        <button type="button"
+                disabled="@(_result.Page <= 1)"
+                @onclick="PreviousPageAsync">
+            Previous
+        </button>
+
+        <span>
+            Page @_result.Page of @_result.TotalPages
+            · @_result.TotalCount total
+        </span>
+
+        <button type="button"
+                disabled="@(_result.Page >= _result.TotalPages)"
+                @onclick="NextPageAsync">
+            Next
+        </button>
+    </div>
+}
+
+@code {
+    private SupplierListResult? _result;
+    private string? _search;
+    private string _activeFilter = string.Empty;
+    private int _page = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task ApplyFilterAsync()
+    {
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        _page = Math.Max(1, _page - 1);
+        await LoadAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (_result is null)
+        {
+            return;
+        }
+
+        _page = Math.Min(
+            _result.TotalPages,
+            _page + 1);
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        bool? isActive = _activeFilter switch
+        {
+            "active" => true,
+            "inactive" => false,
+            _ => null
+        };
+
+        _result = await SupplierList.HandleAsync(
+            new ListSuppliersRequest(
+                _search,
+                isActive,
+                _page));
+    }
+}

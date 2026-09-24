@@ -1,0 +1,251 @@
+@page "/suppliers/{Id:guid}"
+@attribute [Authorize(Policy = Permissions.Suppliers.View)]
+@inject GetSupplierHandler SupplierReader
+@inject UpdateSupplierHandler SupplierUpdater
+@inject SetSupplierActiveHandler SupplierStatus
+
+<PageTitle>Supplier</PageTitle>
+
+@if (_supplier is null)
+{
+    <h1>Supplier not found</h1>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <h1>@_supplier.SupplierCode · @_supplier.Name</h1>
+            <p>@(_supplier.IsActive ? "Active" : "Inactive")</p>
+        </div>
+
+        <a href="/suppliers">Back to suppliers</a>
+    </div>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_message))
+    {
+        <p class="success-message">@_message</p>
+    }
+
+    <AuthorizeView Policy="@Permissions.Suppliers.Update">
+        <Authorized Context="authorizationState">
+            <EditForm Model="_model"
+                      OnValidSubmit="SaveAsync"
+                      class="form-grid"
+                      Context="supplierEditContext">
+                <DataAnnotationsValidator />
+
+                <label for="supplier-code">Supplier code</label>
+                <InputText id="supplier-code"
+                           @bind-Value="_model.SupplierCode" />
+                <ValidationMessage For="() => _model.SupplierCode" />
+
+                <label for="name">Supplier name</label>
+                <InputText id="name"
+                           @bind-Value="_model.Name" />
+                <ValidationMessage For="() => _model.Name" />
+
+                <label for="category">Category / trade</label>
+                <InputText id="category"
+                           @bind-Value="_model.Category" />
+
+                <label for="contact">Contact person</label>
+                <InputText id="contact"
+                           @bind-Value="_model.ContactPerson" />
+
+                <label for="email">Email</label>
+                <InputText id="email"
+                           type="email"
+                           @bind-Value="_model.Email" />
+                <ValidationMessage For="() => _model.Email" />
+
+                <label for="phone">Phone</label>
+                <InputText id="phone"
+                           @bind-Value="_model.Phone" />
+
+                <label for="registration-number">Registration number</label>
+                <InputText id="registration-number"
+                           @bind-Value="_model.RegistrationNumber" />
+
+                <label for="tax-registration-number">Tax registration number</label>
+                <InputText id="tax-registration-number"
+                           @bind-Value="_model.TaxRegistrationNumber" />
+
+                <label for="address">Address</label>
+                <InputTextArea id="address"
+                               @bind-Value="_model.Address" />
+
+                <button type="submit">Save supplier</button>
+            </EditForm>
+        </Authorized>
+        <NotAuthorized Context="authorizationState">
+            <dl class="details-grid">
+                <dt>Category / trade</dt>
+                <dd>@(_supplier.Category ?? "—")</dd>
+                <dt>Contact person</dt>
+                <dd>@(_supplier.ContactPerson ?? "—")</dd>
+                <dt>Email</dt>
+                <dd>@(_supplier.Email ?? "—")</dd>
+                <dt>Phone</dt>
+                <dd>@(_supplier.Phone ?? "—")</dd>
+                <dt>Registration number</dt>
+                <dd>@(_supplier.RegistrationNumber ?? "—")</dd>
+                <dt>Tax registration number</dt>
+                <dd>@(_supplier.TaxRegistrationNumber ?? "—")</dd>
+                <dt>Address</dt>
+                <dd>@(_supplier.Address ?? "—")</dd>
+            </dl>
+        </NotAuthorized>
+    </AuthorizeView>
+
+    <AuthorizeView Policy="@Permissions.Suppliers.SetActive">
+        <Authorized>
+            <button type="button"
+                    class="secondary-button"
+                    @onclick="ToggleActiveAsync">
+                @(_supplier.IsActive ? "Deactivate supplier" : "Activate supplier")
+            </button>
+        </Authorized>
+    </AuthorizeView>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Application.Suppliers.SupplierDetails? _supplier;
+    private readonly SupplierFormModel _model = new();
+    private readonly List<string> _errors = [];
+    private string? _message;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _supplier = await SupplierReader.HandleAsync(Id);
+
+        if (_supplier is null)
+        {
+            return;
+        }
+
+        _model.SupplierCode = _supplier.SupplierCode;
+        _model.Name = _supplier.Name;
+        _model.Category = _supplier.Category;
+        _model.ContactPerson = _supplier.ContactPerson;
+        _model.Email = _supplier.Email;
+        _model.Phone = _supplier.Phone;
+        _model.Address = _supplier.Address;
+        _model.RegistrationNumber = _supplier.RegistrationNumber;
+        _model.TaxRegistrationNumber = _supplier.TaxRegistrationNumber;
+    }
+
+    private async Task SaveAsync()
+    {
+        ClearFeedback();
+
+        var result = await SupplierUpdater.HandleAsync(
+            Id,
+            new UpdateSupplierRequest(
+                _model.SupplierCode,
+                _model.Name,
+                _model.Category,
+                _model.ContactPerson,
+                _model.Email,
+                _model.Phone,
+                _model.Address,
+                _model.RegistrationNumber,
+                _model.TaxRegistrationNumber));
+
+        await HandleResultAsync(
+            result,
+            "Supplier updated.");
+    }
+
+    private async Task ToggleActiveAsync()
+    {
+        if (_supplier is null)
+        {
+            return;
+        }
+
+        ClearFeedback();
+
+        var wasActive = _supplier.IsActive;
+
+        var result = await SupplierStatus.HandleAsync(
+            Id,
+            !wasActive);
+
+        await HandleResultAsync(
+            result,
+            wasActive
+                ? "Supplier deactivated."
+                : "Supplier activated.");
+    }
+
+    private async Task HandleResultAsync(
+        SupplierActionResult result,
+        string message)
+    {
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        _message = message;
+        await LoadAsync();
+    }
+
+    private void ClearFeedback()
+    {
+        _errors.Clear();
+        _message = null;
+    }
+
+    private sealed class SupplierFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(50)]
+        public string SupplierCode { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(200)]
+        public string Name { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.StringLength(150)]
+        public string? Category { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(200)]
+        public string? ContactPerson { get; set; }
+
+        [System.ComponentModel.DataAnnotations.EmailAddress]
+        [System.ComponentModel.DataAnnotations.StringLength(320)]
+        public string? Email { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(50)]
+        public string? Phone { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(1000)]
+        public string? Address { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string? RegistrationNumber { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string? TaxRegistrationNumber { get; set; }
+    }
+}

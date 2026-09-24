@@ -1,0 +1,137 @@
+@page "/suppliers/create"
+@attribute [Authorize(Policy = Permissions.Suppliers.Create)]
+@inject CreateSupplierHandler SupplierCreator
+@inject NavigationManager Navigation
+
+<PageTitle>Create supplier</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <h1>Create supplier</h1>
+        <p>Add a supplier to the company procurement master.</p>
+    </div>
+
+    <a href="/suppliers">Back to suppliers</a>
+</div>
+
+@if (_errors.Count > 0)
+{
+    <div class="validation-error" role="alert">
+        @foreach (var error in _errors)
+        {
+            <div>@error</div>
+        }
+    </div>
+}
+
+<EditForm Model="_model"
+          OnValidSubmit="CreateAsync"
+          class="form-grid">
+    <DataAnnotationsValidator />
+
+    <label for="supplier-code">Supplier code</label>
+    <InputText id="supplier-code"
+               @bind-Value="_model.SupplierCode" />
+    <ValidationMessage For="() => _model.SupplierCode" />
+
+    <label for="name">Supplier name</label>
+    <InputText id="name"
+               @bind-Value="_model.Name" />
+    <ValidationMessage For="() => _model.Name" />
+
+    <label for="category">Category / trade</label>
+    <InputText id="category"
+               @bind-Value="_model.Category" />
+
+    <label for="contact">Contact person</label>
+    <InputText id="contact"
+               @bind-Value="_model.ContactPerson" />
+
+    <label for="email">Email</label>
+    <InputText id="email"
+               type="email"
+               @bind-Value="_model.Email" />
+    <ValidationMessage For="() => _model.Email" />
+
+    <label for="phone">Phone</label>
+    <InputText id="phone"
+               @bind-Value="_model.Phone" />
+
+    <label for="registration-number">Registration number</label>
+    <InputText id="registration-number"
+               @bind-Value="_model.RegistrationNumber" />
+
+    <label for="tax-registration-number">Tax registration number</label>
+    <InputText id="tax-registration-number"
+               @bind-Value="_model.TaxRegistrationNumber" />
+
+    <label for="address">Address</label>
+    <InputTextArea id="address"
+                   @bind-Value="_model.Address" />
+
+    <button type="submit">Create supplier</button>
+</EditForm>
+
+@code {
+    private readonly SupplierFormModel _model = new();
+    private readonly List<string> _errors = [];
+
+    private async Task CreateAsync()
+    {
+        _errors.Clear();
+
+        var result = await SupplierCreator.HandleAsync(
+            new CreateSupplierRequest(
+                _model.SupplierCode,
+                _model.Name,
+                _model.Category,
+                _model.ContactPerson,
+                _model.Email,
+                _model.Phone,
+                _model.Address,
+                _model.RegistrationNumber,
+                _model.TaxRegistrationNumber));
+
+        if (result.Succeeded &&
+            result.SupplierId is Guid supplierId)
+        {
+            Navigation.NavigateTo($"/suppliers/{supplierId}");
+            return;
+        }
+
+        _errors.AddRange(result.Errors);
+    }
+
+    private sealed class SupplierFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(50)]
+        public string SupplierCode { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(200)]
+        public string Name { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.StringLength(150)]
+        public string? Category { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(200)]
+        public string? ContactPerson { get; set; }
+
+        [System.ComponentModel.DataAnnotations.EmailAddress]
+        [System.ComponentModel.DataAnnotations.StringLength(320)]
+        public string? Email { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(50)]
+        public string? Phone { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(1000)]
+        public string? Address { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string? RegistrationNumber { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string? TaxRegistrationNumber { get; set; }
+    }
+}

@@ -15,31 +15,31 @@ Dependencies point inward.
 
 ## Current milestone
 
-**Group 12 — Approval Workflow**
+**Group 13 — Suppliers**
 
-The application now has a reusable sequential approval engine for upcoming procurement and commercial workflows.
+The application now includes a company-wide supplier master for procurement.
 
-It supports:
+Supplier records support:
 
-- generic approval requests linked to a subject type + subject ID
-- optional project context
-- immutable ordered approval steps
-- explicitly assigned approvers
-- one active step at a time
-- approve / reject decisions
-- mandatory rejection comments
-- automatic activation of the next step
-- automatic request completion after the final approval
-- requester cancellation
-- participant-scoped approval inbox
-- pending-decision visibility
+- unique supplier code
+- supplier name
+- flexible category / trade
+- contact person
+- email
+- phone
+- address
+- registration number
+- tax registration number
+- Active / Inactive lifecycle
+- search and status filtering
+- pagination
+- permission-controlled create/update/activation
+- active-supplier lookup for future procurement modules
 - SQL Server persistence
-- Blazor approval inbox and detail UI
+- Blazor supplier register and detail pages
 - Domain, Application, and integration tests
 
-Group 12 intentionally does **not** add workflow templates, parallel approvals, delegation, escalation timers, or a visual workflow designer. Those should be introduced only when real Purchase Request, Purchase Order, and commercial workflows require them.
-
-Daily Reports and Document Revisions keep their existing domain-specific review state. They are not rewritten onto this generic engine.
+Supplier records are not project-specific. Projects, Purchase Requests, Purchase Orders, quotation history, supplier qualification, and performance scoring will reference the company supplier master when those workflows are introduced.
 
 ## Build
 
@@ -58,7 +58,9 @@ Apply database migrations explicitly:
 dotnet ef database update --project src/Infrastructure --startup-project src/Web
 ```
 
-See `docs/approval-workflow.md`.
+See:
+- `docs/approval-workflow.md`
+- `docs/suppliers.md`
 
 ## Planned development order
 
