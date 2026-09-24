@@ -1,5 +1,7 @@
 using Application;
 using Application.Common.Authentication;
+using Application.Common.Authorization;
+using Application.DailyReports;
 using Infrastructure;
 using Infrastructure.Identity;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -49,6 +51,29 @@ app.MapHealthChecks(
     });
 
 app.MapAuthenticationEndpoints();
+
+app.MapGet(
+        "/files/daily-reports/{reportId:guid}/attachments/{attachmentId:guid}",
+        async (
+            Guid reportId,
+            Guid attachmentId,
+            GetDailyReportAttachmentFileHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var file = await handler.HandleAsync(
+                reportId,
+                attachmentId,
+                cancellationToken);
+
+            return file is null
+                ? Results.NotFound()
+                : Results.File(
+                    file.Content,
+                    contentType: file.ContentType,
+                    fileDownloadName: file.FileName,
+                    enableRangeProcessing: true);
+        })
+    .RequireAuthorization(Permissions.DailyReports.View);
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

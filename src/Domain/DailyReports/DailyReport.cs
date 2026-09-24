@@ -6,6 +6,7 @@ public sealed class DailyReport
     private readonly List<DailyReportManpowerEntry> _manpowerEntries = [];
     private readonly List<DailyReportEquipmentEntry> _equipmentEntries = [];
     private readonly List<DailyReportSiteIssue> _siteIssues = [];
+    private readonly List<DailyReportAttachment> _attachments = [];
 
     private DailyReport()
     {
@@ -73,6 +74,9 @@ public sealed class DailyReport
 
     public IReadOnlyCollection<DailyReportSiteIssue> SiteIssues =>
         _siteIssues;
+
+    public IReadOnlyCollection<DailyReportAttachment> Attachments =>
+        _attachments;
 
     public static DailyReport Create(
         Guid projectId,
@@ -279,6 +283,48 @@ public sealed class DailyReport
         _siteIssues.Remove(FindSiteIssue(issueId));
     }
 
+    public DailyReportAttachment AddAttachment(
+        Guid attachmentId,
+        string storageKey,
+        string fileName,
+        string contentType,
+        long sizeBytes,
+        Guid uploadedByUserId,
+        DateTimeOffset uploadedAt,
+        string? caption)
+    {
+        EnsureEditable();
+
+        var attachment = new DailyReportAttachment(
+            attachmentId,
+            Id,
+            storageKey,
+            fileName,
+            contentType,
+            sizeBytes,
+            uploadedByUserId,
+            uploadedAt,
+            caption);
+
+        _attachments.Add(attachment);
+
+        return attachment;
+    }
+
+    public void UpdateAttachmentCaption(
+        Guid attachmentId,
+        string? caption)
+    {
+        EnsureEditable();
+        FindAttachment(attachmentId).UpdateCaption(caption);
+    }
+
+    public void RemoveAttachment(Guid attachmentId)
+    {
+        EnsureEditable();
+        _attachments.Remove(FindAttachment(attachmentId));
+    }
+
     public void Submit(DateTimeOffset submittedAt)
     {
         EnsureEditable();
@@ -352,6 +398,12 @@ public sealed class DailyReport
         _siteIssues.SingleOrDefault(issue => issue.Id == issueId)
         ?? throw new InvalidOperationException(
             "Site issue was not found.");
+
+    private DailyReportAttachment FindAttachment(Guid attachmentId) =>
+        _attachments.SingleOrDefault(
+            attachment => attachment.Id == attachmentId)
+        ?? throw new InvalidOperationException(
+            "Daily report attachment was not found.");
 
     private void EnsureEditable()
     {

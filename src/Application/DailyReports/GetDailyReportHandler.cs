@@ -29,6 +29,11 @@ public sealed class GetDailyReportHandler(
             userIds.Add(reviewerId);
         }
 
+        foreach (var attachment in report.Attachments)
+        {
+            userIds.Add(attachment.UploadedByUserId);
+        }
+
         var directory = await users.ListByIdsAsync(
             userIds.ToArray(),
             cancellationToken);
@@ -102,6 +107,19 @@ public sealed class GetDailyReportHandler(
                     issue.Description,
                     issue.ActionTaken,
                     issue.Status))
+                .ToArray(),
+            report.Attachments
+                .OrderByDescending(attachment => attachment.UploadedAt)
+                .Select(attachment => new DailyReportAttachmentDetails(
+                    attachment.Id,
+                    attachment.FileName,
+                    attachment.ContentType,
+                    attachment.SizeBytes,
+                    usersById.GetValueOrDefault(
+                            attachment.UploadedByUserId)?.Email
+                        ?? "Unknown user",
+                    attachment.UploadedAt,
+                    attachment.Caption))
                 .ToArray());
     }
 }

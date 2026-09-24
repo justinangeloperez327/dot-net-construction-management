@@ -15,25 +15,33 @@ Dependencies point inward.
 
 ## Current milestone
 
-**Group 8 — Manpower, Equipment, and Site Issues**
+**Group 9 — File Storage and Attachments**
 
-Daily site reports now also support:
+Daily Site Reports now support private attachments with:
 
-- manpower by trade / contractor
-- headcount and optional man-hours
-- equipment usage and quantity
-- optional equipment identifier
-- optional equipment hours used
-- site issues and actions taken
-- Open / Resolved issue state
-- report-level workflow locking for all site resources
-- SQL Server persistence
-- Blazor site-resource management
-- Domain, Application, and integration tests
+- reusable `IFileStorage` Application boundary
+- filesystem storage implementation in Infrastructure
+- attachment metadata in SQL Server
+- generated opaque storage keys
+- authenticated upload/download/delete workflows
+- JPEG, PNG, WebP, and PDF allow-list
+- 25 MB per-file limit
+- optional captions
+- uploader and upload timestamp
+- Draft/Rejected attachment editing
+- Submitted/Approved attachment locking
+- storage path traversal protection
+- download responses forced through an authorized application endpoint
 
-These records are children of the DailyReport aggregate rather than independent workflows.
+File bytes are not stored in SQL Server and are not exposed under `wwwroot`.
 
-Attachments remain Group 9.
+The storage root is configurable through:
+
+```text
+FileStorage__RootPath
+```
+
+The default is `App_Data/uploads` under the application base directory.
 
 ## Build
 
@@ -55,6 +63,7 @@ dotnet ef database update --project src/Infrastructure --startup-project src/Web
 See:
 - `docs/daily-site-reports.md`
 - `docs/daily-report-resources.md`
+- `docs/file-storage-attachments.md`
 
 ## Planned development order
 

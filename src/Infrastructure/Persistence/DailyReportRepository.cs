@@ -17,6 +17,7 @@ public sealed class DailyReportRepository(
             .Include(report => report.ManpowerEntries)
             .Include(report => report.EquipmentEntries)
             .Include(report => report.SiteIssues)
+            .Include(report => report.Attachments)
             .AsSplitQuery()
             .SingleOrDefaultAsync(
                 report => report.Id == reportId,
