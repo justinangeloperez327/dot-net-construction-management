@@ -1,9 +1,11 @@
 using Application.Clients;
 using Application.Common.Authorization;
+using Application.Common.Files;
 using Application.DailyReports;
 using Application.Projects;
 using Application.Roles;
 using Application.Users;
+using Infrastructure.Files;
 using Infrastructure.Identity;
 using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
@@ -95,6 +97,26 @@ public static class DependencyInjection
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<IProjectMemberRepository, ProjectMemberRepository>();
         services.AddScoped<IDailyReportRepository, DailyReportRepository>();
+
+        var storageRoot = configuration["FileStorage:RootPath"];
+
+        if (string.IsNullOrWhiteSpace(storageRoot))
+        {
+            storageRoot = "App_Data/uploads";
+        }
+
+        if (!Path.IsPathRooted(storageRoot))
+        {
+            storageRoot = Path.GetFullPath(
+                Path.Combine(
+                    AppContext.BaseDirectory,
+                    storageRoot));
+        }
+
+        services.AddSingleton(
+            new FileStorageOptions(storageRoot));
+
+        services.AddSingleton<IFileStorage, FileSystemFileStorage>();
 
         services
             .AddHealthChecks()

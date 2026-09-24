@@ -33,6 +33,15 @@ public sealed record SiteIssueDetails(
     string? ActionTaken,
     SiteIssueStatus Status);
 
+public sealed record DailyReportAttachmentDetails(
+    Guid Id,
+    string FileName,
+    string ContentType,
+    long SizeBytes,
+    string UploadedBy,
+    DateTimeOffset UploadedAt,
+    string? Caption);
+
 public sealed record DailyReportSummary(
     Guid Id,
     DateOnly ReportDate,
@@ -55,7 +64,8 @@ public sealed record DailyReportDetails(
     IReadOnlyList<DailyReportActivityDetails> Activities,
     IReadOnlyList<ManpowerEntryDetails> ManpowerEntries,
     IReadOnlyList<EquipmentEntryDetails> EquipmentEntries,
-    IReadOnlyList<SiteIssueDetails> SiteIssues);
+    IReadOnlyList<SiteIssueDetails> SiteIssues,
+    IReadOnlyList<DailyReportAttachmentDetails> Attachments);
 
 public sealed record DailyReportListResult(
     IReadOnlyList<DailyReportSummary> Items,

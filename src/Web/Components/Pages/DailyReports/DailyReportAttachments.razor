@@ -1,0 +1,268 @@
+@page "/daily-reports/{Id:guid}/attachments"
+@using Application.Common.Files
+@attribute [Authorize(Policy = Permissions.DailyReports.View)]
+@inject GetDailyReportHandler ReportReader
+@inject UploadDailyReportAttachmentHandler AttachmentUploader
+@inject DeleteDailyReportAttachmentHandler AttachmentDeleter
+
+<PageTitle>Daily report attachments</PageTitle>
+
+@if (_report is null)
+{
+    <h1>Daily report not found</h1>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <h1>Attachments</h1>
+            <p>@_report.ReportDate.ToString("dd MMM yyyy") · @_report.Status</p>
+        </div>
+
+        <a href="@($"/daily-reports/{Id}")">Back to report</a>
+    </div>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_message))
+    {
+        <p class="success-message">@_message</p>
+    }
+
+    @if (IsEditable)
+    {
+        <AuthorizeView Policy="@Permissions.DailyReports.Update">
+            <Authorized Context="authorizationState">
+                <section class="form-section">
+                    <h2>Upload attachment</h2>
+
+                    <div class="form-grid">
+                        <label for="attachment-file">File</label>
+                        <InputFile id="attachment-file"
+                                   OnChange="SelectFile"
+                                   accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf" />
+
+                        @if (_selectedFile is not null)
+                        {
+                            <p>
+                                @_selectedFile.Name
+                                · @FormatSize(_selectedFile.Size)
+                            </p>
+                        }
+
+                        <label for="attachment-caption">Caption</label>
+                        <InputText id="attachment-caption"
+                                   maxlength="@FileUploadPolicy.MaxCaptionLength"
+                                   @bind-Value="_caption" />
+
+                        <p>
+                            JPEG, PNG, WebP, or PDF.
+                            Maximum @FormatSize(FileUploadPolicy.MaxFileSizeBytes).
+                        </p>
+
+                        <button type="button"
+                                disabled="@(_selectedFile is null)"
+                                @onclick="UploadAsync">
+                            Upload
+                        </button>
+                    </div>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+
+    <section class="form-section">
+        <h2>Files</h2>
+
+        @if (_report.Attachments.Count == 0)
+        {
+            <p>No attachments uploaded.</p>
+        }
+        else
+        {
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>File</th>
+                        <th>Caption</th>
+                        <th>Size</th>
+                        <th>Uploaded by</th>
+                        <th>Uploaded</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var attachment in _report.Attachments)
+                    {
+                        <tr>
+                            <td>@attachment.FileName</td>
+                            <td>@(attachment.Caption ?? "—")</td>
+                            <td>@FormatSize(attachment.SizeBytes)</td>
+                            <td>@attachment.UploadedBy</td>
+                            <td>@attachment.UploadedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")</td>
+                            <td>
+                                <div class="table-actions">
+                                    <a href="@($"/files/daily-reports/{Id}/attachments/{attachment.Id}")">
+                                        Download
+                                    </a>
+
+                                    @if (IsEditable)
+                                    {
+                                        <AuthorizeView Policy="@Permissions.DailyReports.Update">
+                                            <Authorized>
+                                                <button type="button"
+                                                        class="danger-button"
+                                                        @onclick="() => DeleteAsync(attachment.Id)">
+                                                    Delete
+                                                </button>
+                                            </Authorized>
+                                        </AuthorizeView>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Application.DailyReports.DailyReportDetails? _report;
+    private IBrowserFile? _selectedFile;
+    private string? _caption;
+    private readonly List<string> _errors = [];
+    private string? _message;
+
+    private bool IsEditable =>
+        _report?.Status is DailyReportStatus.Draft or DailyReportStatus.Rejected;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private void SelectFile(InputFileChangeEventArgs eventArgs)
+    {
+        ClearFeedback();
+        _selectedFile = eventArgs.File;
+
+        var error = FileUploadPolicy.ValidateAndGetExtension(
+            _selectedFile.Name,
+            _selectedFile.ContentType,
+            _selectedFile.Size);
+
+        if (error is not null)
+        {
+            _errors.Add(error);
+            _selectedFile = null;
+        }
+    }
+
+    private async Task UploadAsync()
+    {
+        if (_selectedFile is null)
+        {
+            return;
+        }
+
+        ClearFeedback();
+
+        var validationError = FileUploadPolicy.ValidateAndGetExtension(
+            _selectedFile.Name,
+            _selectedFile.ContentType,
+            _selectedFile.Size);
+
+        if (validationError is not null)
+        {
+            _errors.Add(validationError);
+            return;
+        }
+
+        try
+        {
+            await using var content = _selectedFile.OpenReadStream(
+                FileUploadPolicy.MaxFileSizeBytes);
+
+            var result = await AttachmentUploader.HandleAsync(
+                Id,
+                new UploadDailyReportAttachmentRequest(
+                    _selectedFile.Name,
+                    _selectedFile.ContentType,
+                    _selectedFile.Size,
+                    _caption,
+                    content));
+
+            if (!result.Succeeded)
+            {
+                _errors.AddRange(result.Errors);
+                return;
+            }
+
+            _selectedFile = null;
+            _caption = null;
+            _message = "Attachment uploaded.";
+            await LoadAsync();
+        }
+        catch (IOException)
+        {
+            _errors.Add("The file could not be read.");
+        }
+    }
+
+    private async Task DeleteAsync(Guid attachmentId)
+    {
+        ClearFeedback();
+
+        var result = await AttachmentDeleter.HandleAsync(
+            Id,
+            attachmentId);
+
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        _message = "Attachment deleted.";
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _report = await ReportReader.HandleAsync(Id);
+    }
+
+    private void ClearFeedback()
+    {
+        _errors.Clear();
+        _message = null;
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes >= 1024L * 1024)
+        {
+            return $"{bytes / (1024d * 1024d):0.##} MB";
+        }
+
+        if (bytes >= 1024)
+        {
+            return $"{bytes / 1024d:0.##} KB";
+        }
+
+        return $"{bytes} B";
+    }
+}

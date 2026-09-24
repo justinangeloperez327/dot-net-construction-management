@@ -74,6 +74,11 @@ public sealed class DailyReportConfiguration
             .HasForeignKey(issue => issue.DailyReportId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasMany(report => report.Attachments)
+            .WithOne()
+            .HasForeignKey(attachment => attachment.DailyReportId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.Navigation(report => report.Activities)
             .UsePropertyAccessMode(PropertyAccessMode.Field);
 
@@ -84,6 +89,9 @@ public sealed class DailyReportConfiguration
             .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.Navigation(report => report.SiteIssues)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.Navigation(report => report.Attachments)
             .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

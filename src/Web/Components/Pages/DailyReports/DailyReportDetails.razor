@@ -26,6 +26,9 @@ else
             <a href="@($"/daily-reports/{Id}/site-resources")">
                 Site resources
             </a>
+            <a href="@($"/daily-reports/{Id}/attachments")">
+                Attachments
+            </a>
             <a href="@($"/projects/{_report.ProjectId}/daily-reports")">
                 Back to reports
             </a>
@@ -74,6 +77,9 @@ else
 
         <dt>Open site issues</dt>
         <dd>@_report.SiteIssues.Count(issue => issue.Status == SiteIssueStatus.Open)</dd>
+
+        <dt>Attachments</dt>
+        <dd>@_report.Attachments.Count</dd>
     </dl>
 
     @if (IsEditable)

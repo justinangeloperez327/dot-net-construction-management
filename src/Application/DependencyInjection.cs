@@ -51,6 +51,10 @@ public static class DependencyInjection
         services.AddScoped<UpdateSiteIssueHandler>();
         services.AddScoped<RemoveSiteIssueHandler>();
 
+        services.AddScoped<UploadDailyReportAttachmentHandler>();
+        services.AddScoped<DeleteDailyReportAttachmentHandler>();
+        services.AddScoped<GetDailyReportAttachmentFileHandler>();
+
         return services;
     }
 }

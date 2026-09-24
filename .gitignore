@@ -23,3 +23,6 @@ appsettings.Local.json
 
 ## Logs
 *.log
+
+## Application data
+App_Data/

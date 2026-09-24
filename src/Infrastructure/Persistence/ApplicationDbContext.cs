@@ -32,6 +32,9 @@ public sealed class ApplicationDbContext(
     public DbSet<DailyReportSiteIssue> DailyReportSiteIssues =>
         Set<DailyReportSiteIssue>();
 
+    public DbSet<DailyReportAttachment> DailyReportAttachments =>
+        Set<DailyReportAttachment>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
