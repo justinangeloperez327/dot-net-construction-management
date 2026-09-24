@@ -37,6 +37,15 @@ public static class Permissions
         public const string ManageMembers = "projects.manage_members";
     }
 
+    public static class DailyReports
+    {
+        public const string View = "daily_reports.view";
+        public const string Create = "daily_reports.create";
+        public const string Update = "daily_reports.update";
+        public const string Submit = "daily_reports.submit";
+        public const string Review = "daily_reports.review";
+    }
+
     public static IReadOnlyList<string> All { get; } =
     [
         Users.View,
@@ -57,7 +66,12 @@ public static class Permissions
         Projects.Create,
         Projects.Update,
         Projects.Close,
-        Projects.ManageMembers
+        Projects.ManageMembers,
+        DailyReports.View,
+        DailyReports.Create,
+        DailyReports.Update,
+        DailyReports.Submit,
+        DailyReports.Review
     ];
 }
 

@@ -1,0 +1,99 @@
+@page "/projects/{ProjectId:guid}/daily-reports/create"
+@attribute [Authorize(Policy = Permissions.DailyReports.Create)]
+@inject GetProjectHandler ProjectReader
+@inject CreateDailyReportHandler ReportCreator
+@inject NavigationManager Navigation
+
+<PageTitle>Create daily site report</PageTitle>
+
+@if (_project is null)
+{
+    <h1>Project not found</h1>
+}
+else if (_project.Status == ProjectStatus.Closed)
+{
+    <h1>Create daily site report</h1>
+    <p>Daily reports cannot be created for a closed project.</p>
+}
+else
+{
+    <h1>Create daily site report</h1>
+    <p>@_project.ProjectNumber · @_project.Name</p>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    <EditForm Model="_model"
+              OnValidSubmit="CreateAsync"
+              class="form-grid">
+        <DataAnnotationsValidator />
+
+        <label for="report-date">Report date</label>
+        <InputDate id="report-date"
+                   @bind-Value="_model.ReportDate" />
+
+        <label for="weather">Weather / site conditions</label>
+        <InputText id="weather"
+                   @bind-Value="_model.Weather" />
+
+        <label for="remarks">General remarks</label>
+        <InputTextArea id="remarks"
+                       @bind-Value="_model.Remarks" />
+
+        <button type="submit">Create draft report</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public Guid ProjectId { get; set; }
+
+    private Application.Projects.ProjectDetails? _project;
+    private readonly CreateReportModel _model = new();
+    private readonly List<string> _errors = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _project = await ProjectReader.HandleAsync(ProjectId);
+    }
+
+    private async Task CreateAsync()
+    {
+        _errors.Clear();
+
+        var result = await ReportCreator.HandleAsync(
+            new CreateDailyReportRequest(
+                ProjectId,
+                _model.ReportDate,
+                _model.Weather,
+                _model.Remarks));
+
+        if (result.Succeeded && result.ReportId is Guid reportId)
+        {
+            Navigation.NavigateTo($"/daily-reports/{reportId}");
+            return;
+        }
+
+        _errors.AddRange(result.Errors);
+    }
+
+    private sealed class CreateReportModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public DateOnly ReportDate { get; set; } =
+            DateOnly.FromDateTime(DateTime.Today);
+
+        [System.ComponentModel.DataAnnotations.StringLength(200)]
+        public string? Weather { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(2000)]
+        public string? Remarks { get; set; }
+    }
+}

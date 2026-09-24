@@ -19,6 +19,15 @@ else
         </div>
 
         <div class="page-actions">
+            <AuthorizeView Policy="@Permissions.DailyReports.View">
+                <Authorized>
+                    <a class="button-link"
+                       href="@($"/projects/{Id}/daily-reports")">
+                        Daily reports
+                    </a>
+                </Authorized>
+            </AuthorizeView>
+
             @if (_project.Status == ProjectStatus.Active)
             {
                 <AuthorizeView Policy="@Permissions.Projects.Update">

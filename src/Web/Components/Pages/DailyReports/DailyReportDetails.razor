@@ -1,0 +1,504 @@
+@page "/daily-reports/{Id:guid}"
+@attribute [Authorize(Policy = Permissions.DailyReports.View)]
+@inject GetDailyReportHandler ReportReader
+@inject UpdateDailyReportHandler ReportUpdater
+@inject AddDailyReportActivityHandler ActivityAdder
+@inject UpdateDailyReportActivityHandler ActivityUpdater
+@inject RemoveDailyReportActivityHandler ActivityRemover
+@inject SubmitDailyReportHandler ReportSubmitter
+@inject ReviewDailyReportHandler ReportReviewer
+
+<PageTitle>Daily site report</PageTitle>
+
+@if (_report is null)
+{
+    <h1>Daily report not found</h1>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <h1>Daily site report</h1>
+            <p>@_report.ReportDate.ToString("dd MMM yyyy") · @_report.Status</p>
+        </div>
+
+        <a href="@($"/projects/{_report.ProjectId}/daily-reports")">
+            Back to reports
+        </a>
+    </div>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_message))
+    {
+        <p class="success-message">@_message</p>
+    }
+
+    <dl class="details-grid">
+        <dt>Prepared by</dt>
+        <dd>@_report.PreparedBy</dd>
+
+        <dt>Status</dt>
+        <dd>@_report.Status</dd>
+
+        <dt>Submitted</dt>
+        <dd>@(_report.SubmittedAt?.ToLocalTime().ToString("dd MMM yyyy HH:mm") ?? "—")</dd>
+
+        <dt>Reviewed by</dt>
+        <dd>@(_report.ReviewedBy ?? "—")</dd>
+
+        <dt>Reviewed</dt>
+        <dd>@(_report.ReviewedAt?.ToLocalTime().ToString("dd MMM yyyy HH:mm") ?? "—")</dd>
+
+        <dt>Review comments</dt>
+        <dd>@(_report.ReviewComments ?? "—")</dd>
+    </dl>
+
+    @if (IsEditable)
+    {
+        <AuthorizeView Policy="@Permissions.DailyReports.Update">
+            <Authorized Context="authorizationState">
+                <section class="form-section">
+                    <h2>Report details</h2>
+
+                    <EditForm Model="_header"
+                              OnValidSubmit="SaveHeaderAsync"
+                              class="form-grid"
+                              Context="editContext">
+                        <DataAnnotationsValidator />
+
+                        <label for="weather">Weather / site conditions</label>
+                        <InputText id="weather"
+                                   @bind-Value="_header.Weather" />
+
+                        <label for="remarks">General remarks</label>
+                        <InputTextArea id="remarks"
+                                       @bind-Value="_header.Remarks" />
+
+                        <button type="submit">Save report details</button>
+                    </EditForm>
+                </section>
+
+                <section class="form-section">
+                    <h2>Add activity</h2>
+
+                    <EditForm Model="_newActivity"
+                              OnValidSubmit="AddActivityAsync"
+                              class="form-grid"
+                              Context="activityEditContext">
+                        <DataAnnotationsValidator />
+
+                        <label for="work-area">Work area / location</label>
+                        <InputText id="work-area"
+                                   @bind-Value="_newActivity.WorkArea" />
+
+                        <label for="activity">Activity</label>
+                        <InputText id="activity"
+                                   @bind-Value="_newActivity.Activity" />
+
+                        <label for="activity-status">Status</label>
+                        <InputSelect id="activity-status"
+                                     @bind-Value="_newActivity.Status">
+                            @foreach (var status in Enum.GetValues<DailyActivityStatus>())
+                            {
+                                <option value="@status">@status</option>
+                            }
+                        </InputSelect>
+
+                        <label for="progress">Progress percent</label>
+                        <InputNumber id="progress"
+                                     @bind-Value="_newActivity.ProgressPercent" />
+
+                        <label for="activity-remarks">Remarks</label>
+                        <InputTextArea id="activity-remarks"
+                                       @bind-Value="_newActivity.Remarks" />
+
+                        <button type="submit">Add activity</button>
+                    </EditForm>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+    else
+    {
+        <section class="form-section">
+            <h2>Report details</h2>
+            <dl class="details-grid">
+                <dt>Weather / site conditions</dt>
+                <dd>@(_report.Weather ?? "—")</dd>
+                <dt>General remarks</dt>
+                <dd>@(_report.Remarks ?? "—")</dd>
+            </dl>
+        </section>
+    }
+
+    <section class="form-section">
+        <h2>Activities</h2>
+
+        @if (_report.Activities.Count == 0)
+        {
+            <p>No activities recorded.</p>
+        }
+        else
+        {
+            <div class="activity-list">
+                @foreach (var activity in _report.Activities)
+                {
+                    <article class="activity-card">
+                        @if (IsEditable)
+                        {
+                            <AuthorizeView Policy="@Permissions.DailyReports.Update">
+                                <Authorized Context="authorizationState">
+                                    <div class="form-grid">
+                                        <label>Work area / location</label>
+                                        <input value="@GetEdit(activity.Id).WorkArea"
+                                               @onchange="eventArgs => SetWorkArea(activity.Id, eventArgs.Value)" />
+
+                                        <label>Activity</label>
+                                        <input value="@GetEdit(activity.Id).Activity"
+                                               @onchange="eventArgs => SetActivity(activity.Id, eventArgs.Value)" />
+
+                                        <label>Status</label>
+                                        <select value="@GetEdit(activity.Id).Status"
+                                                @onchange="eventArgs => SetStatus(activity.Id, eventArgs.Value)">
+                                            @foreach (var status in Enum.GetValues<DailyActivityStatus>())
+                                            {
+                                                <option value="@status">@status</option>
+                                            }
+                                        </select>
+
+                                        <label>Progress percent</label>
+                                        <input type="number"
+                                               min="0"
+                                               max="100"
+                                               step="0.01"
+                                               value="@GetEdit(activity.Id).ProgressPercent"
+                                               @onchange="eventArgs => SetProgress(activity.Id, eventArgs.Value)" />
+
+                                        <label>Remarks</label>
+                                        <textarea @onchange="eventArgs => SetRemarks(activity.Id, eventArgs.Value)">@GetEdit(activity.Id).Remarks</textarea>
+
+                                        <div class="page-actions">
+                                            <button type="button"
+                                                    @onclick="() => SaveActivityAsync(activity.Id)">
+                                                Save
+                                            </button>
+                                            <button type="button"
+                                                    class="danger-button"
+                                                    @onclick="() => RemoveActivityAsync(activity.Id)">
+                                                Remove
+                                            </button>
+                                        </div>
+                                    </div>
+                                </Authorized>
+                            </AuthorizeView>
+                        }
+                        else
+                        {
+                            <dl class="details-grid">
+                                <dt>Work area</dt>
+                                <dd>@activity.WorkArea</dd>
+                                <dt>Activity</dt>
+                                <dd>@activity.Activity</dd>
+                                <dt>Status</dt>
+                                <dd>@activity.Status</dd>
+                                <dt>Progress</dt>
+                                <dd>@FormatProgress(activity.ProgressPercent)</dd>
+                                <dt>Remarks</dt>
+                                <dd>@(activity.Remarks ?? "—")</dd>
+                            </dl>
+                        }
+                    </article>
+                }
+            </div>
+        }
+    </section>
+
+    @if (IsEditable)
+    {
+        <AuthorizeView Policy="@Permissions.DailyReports.Submit">
+            <Authorized>
+                <section class="form-section">
+                    <h2>Submit report</h2>
+                    <p>Submitting locks the report for review.</p>
+                    <button type="button"
+                            @onclick="SubmitAsync">
+                        Submit for review
+                    </button>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+
+    @if (_report.Status == DailyReportStatus.Submitted)
+    {
+        <AuthorizeView Policy="@Permissions.DailyReports.Review">
+            <Authorized Context="authorizationState">
+                <section class="form-section">
+                    <h2>Review report</h2>
+
+                    <div class="form-grid">
+                        <label for="review-comments">Comments</label>
+                        <textarea id="review-comments"
+                                  @bind="_reviewComments"></textarea>
+
+                        <div class="page-actions">
+                            <button type="button"
+                                    @onclick="ApproveAsync">
+                                Approve
+                            </button>
+                            <button type="button"
+                                    class="danger-button"
+                                    @onclick="RejectAsync">
+                                Reject
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Application.DailyReports.DailyReportDetails? _report;
+    private readonly HeaderModel _header = new();
+    private readonly ActivityModel _newActivity = new();
+    private readonly Dictionary<Guid, ActivityModel> _activityEdits = [];
+    private readonly List<string> _errors = [];
+    private string? _message;
+    private string? _reviewComments;
+
+    private bool IsEditable =>
+        _report?.Status is DailyReportStatus.Draft or DailyReportStatus.Rejected;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _report = await ReportReader.HandleAsync(Id);
+        _activityEdits.Clear();
+
+        if (_report is null)
+        {
+            return;
+        }
+
+        _header.Weather = _report.Weather;
+        _header.Remarks = _report.Remarks;
+
+        foreach (var activity in _report.Activities)
+        {
+            _activityEdits[activity.Id] = new ActivityModel
+            {
+                WorkArea = activity.WorkArea,
+                Activity = activity.Activity,
+                Status = activity.Status,
+                ProgressPercent = activity.ProgressPercent,
+                Remarks = activity.Remarks
+            };
+        }
+    }
+
+    private async Task SaveHeaderAsync()
+    {
+        ClearFeedback();
+
+        var result = await ReportUpdater.HandleAsync(
+            Id,
+            new UpdateDailyReportRequest(
+                _header.Weather,
+                _header.Remarks));
+
+        await HandleAsync(result, "Report details updated.");
+    }
+
+    private async Task AddActivityAsync()
+    {
+        ClearFeedback();
+
+        var result = await ActivityAdder.HandleAsync(
+            Id,
+            ToRequest(_newActivity));
+
+        if (result.Succeeded)
+        {
+            _newActivity.Reset();
+        }
+
+        await HandleAsync(result, "Activity added.");
+    }
+
+    private async Task SaveActivityAsync(Guid activityId)
+    {
+        ClearFeedback();
+
+        var result = await ActivityUpdater.HandleAsync(
+            Id,
+            activityId,
+            ToRequest(GetEdit(activityId)));
+
+        await HandleAsync(result, "Activity updated.");
+    }
+
+    private async Task RemoveActivityAsync(Guid activityId)
+    {
+        ClearFeedback();
+
+        var result = await ActivityRemover.HandleAsync(
+            Id,
+            activityId);
+
+        await HandleAsync(result, "Activity removed.");
+    }
+
+    private async Task SubmitAsync()
+    {
+        ClearFeedback();
+
+        var result = await ReportSubmitter.HandleAsync(Id);
+
+        await HandleAsync(result, "Report submitted for review.");
+    }
+
+    private async Task ApproveAsync()
+    {
+        ClearFeedback();
+
+        var result = await ReportReviewer.HandleAsync(
+            Id,
+            new ReviewDailyReportRequest(
+                true,
+                _reviewComments));
+
+        await HandleAsync(result, "Report approved.");
+    }
+
+    private async Task RejectAsync()
+    {
+        ClearFeedback();
+
+        var result = await ReportReviewer.HandleAsync(
+            Id,
+            new ReviewDailyReportRequest(
+                false,
+                _reviewComments));
+
+        await HandleAsync(result, "Report rejected.");
+    }
+
+    private async Task HandleAsync(
+        DailyReportActionResult result,
+        string message)
+    {
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        _message = message;
+        _reviewComments = null;
+        await LoadAsync();
+    }
+
+    private ActivityModel GetEdit(Guid activityId) =>
+        _activityEdits[activityId];
+
+    private void SetWorkArea(Guid id, object? value) =>
+        GetEdit(id).WorkArea = value?.ToString() ?? string.Empty;
+
+    private void SetActivity(Guid id, object? value) =>
+        GetEdit(id).Activity = value?.ToString() ?? string.Empty;
+
+    private void SetStatus(Guid id, object? value)
+    {
+        if (Enum.TryParse<DailyActivityStatus>(
+                value?.ToString(),
+                out var status))
+        {
+            GetEdit(id).Status = status;
+        }
+    }
+
+    private void SetProgress(Guid id, object? value)
+    {
+        GetEdit(id).ProgressPercent =
+            decimal.TryParse(value?.ToString(), out var progress)
+                ? progress
+                : null;
+    }
+
+    private void SetRemarks(Guid id, object? value) =>
+        GetEdit(id).Remarks = value?.ToString();
+
+    private void ClearFeedback()
+    {
+        _errors.Clear();
+        _message = null;
+    }
+
+    private static string FormatProgress(decimal? progress) =>
+        progress is null ? "—" : $"{progress:0.##}%";
+
+    private static SaveDailyReportActivityRequest ToRequest(
+        ActivityModel model) =>
+        new(
+            model.WorkArea,
+            model.Activity,
+            model.Status,
+            model.ProgressPercent,
+            model.Remarks);
+
+    private sealed class HeaderModel
+    {
+        [System.ComponentModel.DataAnnotations.StringLength(200)]
+        public string? Weather { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(2000)]
+        public string? Remarks { get; set; }
+    }
+
+    private sealed class ActivityModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(150)]
+        public string WorkArea { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(300)]
+        public string Activity { get; set; } = string.Empty;
+
+        public DailyActivityStatus Status { get; set; } =
+            DailyActivityStatus.InProgress;
+
+        [System.ComponentModel.DataAnnotations.Range(0, 100)]
+        public decimal? ProgressPercent { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(1000)]
+        public string? Remarks { get; set; }
+
+        public void Reset()
+        {
+            WorkArea = string.Empty;
+            Activity = string.Empty;
+            Status = DailyActivityStatus.InProgress;
+            ProgressPercent = null;
+            Remarks = null;
+        }
+    }
+}

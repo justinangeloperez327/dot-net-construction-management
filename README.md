@@ -15,21 +15,23 @@ Dependencies point inward.
 
 ## Current milestone
 
-**Group 6 — Clients and Project Members**
+**Group 7 — Daily Site Reports**
 
-The application now includes:
+The application now supports:
 
-- independently managed clients
-- optional client assignment to projects
-- active/inactive client state
-- project membership using existing application users
-- free-text project responsibility/title
-- member add/update/remove workflows
-- client and project-member authorization
-- SQL Server relationship mapping
+- one daily report per project/date
+- preparer identity
+- weather and general remarks
+- multiple site activity rows
+- location/activity/status/progress/remarks
+- Draft → Submitted → Approved/Rejected workflow
+- rejected report correction and resubmission
+- reviewer identity and comments
+- search/filter-free project-scoped report history
+- permission-controlled Blazor reporting UI
 - Domain, Application, and integration tests
 
-No duplicate employee/user table is introduced. Project membership references the existing Identity user by ID.
+Manpower, equipment, and site issues remain Group 8. Attachments remain Group 9.
 
 ## Build
 
@@ -42,19 +44,13 @@ dotnet build CPM.slnx --configuration Release --no-restore
 dotnet test CPM.slnx --configuration Release --no-build
 ```
 
-Run:
-
-```bash
-dotnet run --project src/Web/Web.csproj
-```
-
 Apply database migrations explicitly:
 
 ```bash
 dotnet ef database update --project src/Infrastructure --startup-project src/Web
 ```
 
-See `docs/clients-project-members.md`.
+See `docs/daily-site-reports.md`.
 
 ## Planned development order
 
