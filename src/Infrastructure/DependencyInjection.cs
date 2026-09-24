@@ -1,3 +1,4 @@
+using Application.Approvals;
 using Application.Clients;
 using Application.Common.Authorization;
 using Application.Common.Files;
@@ -99,6 +100,7 @@ public static class DependencyInjection
         services.AddScoped<IProjectMemberRepository, ProjectMemberRepository>();
         services.AddScoped<IDailyReportRepository, DailyReportRepository>();
         services.AddScoped<IDocumentRepository, DocumentRepository>();
+        services.AddScoped<IApprovalRequestRepository, ApprovalRequestRepository>();
 
         var storageRoot = configuration["FileStorage:RootPath"];
 

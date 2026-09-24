@@ -57,6 +57,14 @@ public static class Permissions
         public const string ReviewRevision = "documents.revisions.review";
     }
 
+    public static class Approvals
+    {
+        public const string View = "approvals.view";
+        public const string Create = "approvals.create";
+        public const string Decide = "approvals.decide";
+        public const string Cancel = "approvals.cancel";
+    }
+
     public static IReadOnlyList<string> All { get; } =
     [
         Users.View,
@@ -89,7 +97,11 @@ public static class Permissions
         Documents.Archive,
         Documents.CreateRevision,
         Documents.SubmitRevision,
-        Documents.ReviewRevision
+        Documents.ReviewRevision,
+        Approvals.View,
+        Approvals.Create,
+        Approvals.Decide,
+        Approvals.Cancel
     ];
 }
 

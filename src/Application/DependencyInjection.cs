@@ -1,3 +1,4 @@
+using Application.Approvals;
 using Application.Clients;
 using Application.DailyReports;
 using Application.Documents;
@@ -65,6 +66,12 @@ public static class DependencyInjection
         services.AddScoped<SubmitDocumentRevisionHandler>();
         services.AddScoped<ReviewDocumentRevisionHandler>();
         services.AddScoped<GetDocumentRevisionFileHandler>();
+
+        services.AddScoped<CreateApprovalRequestHandler>();
+        services.AddScoped<DecideApprovalStepHandler>();
+        services.AddScoped<CancelApprovalRequestHandler>();
+        services.AddScoped<GetApprovalRequestHandler>();
+        services.AddScoped<ListApprovalRequestsHandler>();
 
         return services;
     }

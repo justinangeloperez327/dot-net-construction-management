@@ -1,3 +1,4 @@
+using Domain.Approvals;
 using Domain.Clients;
 using Domain.DailyReports;
 using Domain.Documents;
@@ -40,6 +41,12 @@ public sealed class ApplicationDbContext(
 
     public DbSet<DocumentRevision> DocumentRevisions =>
         Set<DocumentRevision>();
+
+    public DbSet<ApprovalRequest> ApprovalRequests =>
+        Set<ApprovalRequest>();
+
+    public DbSet<ApprovalStep> ApprovalSteps =>
+        Set<ApprovalStep>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
