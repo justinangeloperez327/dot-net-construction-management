@@ -28,6 +28,14 @@ public static class Permissions
         public const string SetActive = "clients.set_active";
     }
 
+    public static class Suppliers
+    {
+        public const string View = "suppliers.view";
+        public const string Create = "suppliers.create";
+        public const string Update = "suppliers.update";
+        public const string SetActive = "suppliers.set_active";
+    }
+
     public static class Projects
     {
         public const string View = "projects.view";
@@ -81,6 +89,10 @@ public static class Permissions
         Clients.Create,
         Clients.Update,
         Clients.SetActive,
+        Suppliers.View,
+        Suppliers.Create,
+        Suppliers.Update,
+        Suppliers.SetActive,
         Projects.View,
         Projects.Create,
         Projects.Update,

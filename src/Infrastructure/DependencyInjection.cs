@@ -6,6 +6,7 @@ using Application.DailyReports;
 using Application.Documents;
 using Application.Projects;
 using Application.Roles;
+using Application.Suppliers;
 using Application.Users;
 using Infrastructure.Files;
 using Infrastructure.Identity;
@@ -101,6 +102,7 @@ public static class DependencyInjection
         services.AddScoped<IDailyReportRepository, DailyReportRepository>();
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<IApprovalRequestRepository, ApprovalRequestRepository>();
+        services.AddScoped<ISupplierRepository, SupplierRepository>();
 
         var storageRoot = configuration["FileStorage:RootPath"];
 

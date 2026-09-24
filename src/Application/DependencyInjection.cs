@@ -3,6 +3,7 @@ using Application.Clients;
 using Application.DailyReports;
 using Application.Documents;
 using Application.Projects;
+using Application.Suppliers;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Application;
@@ -72,6 +73,13 @@ public static class DependencyInjection
         services.AddScoped<CancelApprovalRequestHandler>();
         services.AddScoped<GetApprovalRequestHandler>();
         services.AddScoped<ListApprovalRequestsHandler>();
+
+        services.AddScoped<CreateSupplierHandler>();
+        services.AddScoped<UpdateSupplierHandler>();
+        services.AddScoped<SetSupplierActiveHandler>();
+        services.AddScoped<GetSupplierHandler>();
+        services.AddScoped<ListSuppliersHandler>();
+        services.AddScoped<ListActiveSuppliersHandler>();
 
         return services;
     }

@@ -17,6 +17,12 @@
                 </Authorized>
             </AuthorizeView>
 
+            <AuthorizeView Policy="@Permissions.Suppliers.View">
+                <Authorized>
+                    <a href="/suppliers">Suppliers</a>
+                </Authorized>
+            </AuthorizeView>
+
             <AuthorizeView Policy="@Permissions.Approvals.View">
                 <Authorized>
                     <a href="/approvals">Approvals</a>

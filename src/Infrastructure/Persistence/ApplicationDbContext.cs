@@ -3,6 +3,7 @@ using Domain.Clients;
 using Domain.DailyReports;
 using Domain.Documents;
 using Domain.Projects;
+using Domain.Suppliers;
 using Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -47,6 +48,8 @@ public sealed class ApplicationDbContext(
 
     public DbSet<ApprovalStep> ApprovalSteps =>
         Set<ApprovalStep>();
+
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
