@@ -1,0 +1,135 @@
+@page "/projects/{ProjectId:guid}/documents/create"
+@attribute [Authorize(Policy = Permissions.Documents.Create)]
+@inject GetProjectHandler ProjectReader
+@inject CreateDocumentHandler DocumentCreator
+@inject NavigationManager Navigation
+
+<PageTitle>Register document</PageTitle>
+
+@if (_project is null)
+{
+    <h1>Project not found</h1>
+}
+else if (_project.Status == ProjectStatus.Closed)
+{
+    <h1>Register document</h1>
+    <p>Documents cannot be registered in a closed project.</p>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <h1>Register document</h1>
+            <p>@_project.ProjectNumber · @_project.Name</p>
+        </div>
+
+        <a href="@($"/projects/{ProjectId}/documents")">
+            Back to register
+        </a>
+    </div>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    <EditForm Model="_model"
+              OnValidSubmit="CreateAsync"
+              class="form-grid">
+        <DataAnnotationsValidator />
+
+        <label for="document-number">Document number</label>
+        <InputText id="document-number"
+                   @bind-Value="_model.DocumentNumber" />
+        <ValidationMessage For="() => _model.DocumentNumber" />
+
+        <label for="title">Title</label>
+        <InputText id="title"
+                   @bind-Value="_model.Title" />
+        <ValidationMessage For="() => _model.Title" />
+
+        <label for="category">Category</label>
+        <InputText id="category"
+                   @bind-Value="_model.Category" />
+
+        <label for="discipline">Discipline</label>
+        <InputText id="discipline"
+                   @bind-Value="_model.Discipline" />
+
+        <label for="originator">Originator</label>
+        <InputText id="originator"
+                   @bind-Value="_model.Originator" />
+
+        <label for="description">Description</label>
+        <InputTextArea id="description"
+                       @bind-Value="_model.Description" />
+
+        <button type="submit">Register document</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public Guid ProjectId { get; set; }
+
+    private Application.Projects.ProjectDetails? _project;
+    private readonly DocumentFormModel _model = new();
+    private readonly List<string> _errors = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _project = await ProjectReader.HandleAsync(ProjectId);
+    }
+
+    private async Task CreateAsync()
+    {
+        _errors.Clear();
+
+        var result = await DocumentCreator.HandleAsync(
+            new CreateDocumentRequest(
+                ProjectId,
+                _model.DocumentNumber,
+                _model.Title,
+                _model.Category,
+                _model.Discipline,
+                _model.Originator,
+                _model.Description));
+
+        if (result.Succeeded &&
+            result.DocumentId is Guid documentId)
+        {
+            Navigation.NavigateTo($"/documents/{documentId}");
+            return;
+        }
+
+        _errors.AddRange(result.Errors);
+    }
+
+    private sealed class DocumentFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string DocumentNumber { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(300)]
+        public string Title { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string? Category { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string? Discipline { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(200)]
+        public string? Originator { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(2000)]
+        public string? Description { get; set; }
+    }
+}

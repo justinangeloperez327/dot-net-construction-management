@@ -1,5 +1,6 @@
 using Application.Clients;
 using Application.DailyReports;
+using Application.Documents;
 using Application.Projects;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -54,6 +55,12 @@ public static class DependencyInjection
         services.AddScoped<UploadDailyReportAttachmentHandler>();
         services.AddScoped<DeleteDailyReportAttachmentHandler>();
         services.AddScoped<GetDailyReportAttachmentFileHandler>();
+
+        services.AddScoped<CreateDocumentHandler>();
+        services.AddScoped<UpdateDocumentHandler>();
+        services.AddScoped<SetDocumentArchivedHandler>();
+        services.AddScoped<GetDocumentHandler>();
+        services.AddScoped<ListDocumentsHandler>();
 
         return services;
     }

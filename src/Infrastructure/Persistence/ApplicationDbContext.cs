@@ -1,5 +1,6 @@
 using Domain.Clients;
 using Domain.DailyReports;
+using Domain.Documents;
 using Domain.Projects;
 using Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
@@ -34,6 +35,8 @@ public sealed class ApplicationDbContext(
 
     public DbSet<DailyReportAttachment> DailyReportAttachments =>
         Set<DailyReportAttachment>();
+
+    public DbSet<Document> Documents => Set<Document>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

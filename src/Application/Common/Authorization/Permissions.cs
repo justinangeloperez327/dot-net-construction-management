@@ -46,6 +46,14 @@ public static class Permissions
         public const string Review = "daily_reports.review";
     }
 
+    public static class Documents
+    {
+        public const string View = "documents.view";
+        public const string Create = "documents.create";
+        public const string Update = "documents.update";
+        public const string Archive = "documents.archive";
+    }
+
     public static IReadOnlyList<string> All { get; } =
     [
         Users.View,
@@ -71,7 +79,11 @@ public static class Permissions
         DailyReports.Create,
         DailyReports.Update,
         DailyReports.Submit,
-        DailyReports.Review
+        DailyReports.Review,
+        Documents.View,
+        Documents.Create,
+        Documents.Update,
+        Documents.Archive
     ];
 }
 

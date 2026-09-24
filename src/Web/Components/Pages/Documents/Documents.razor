@@ -1,0 +1,169 @@
+@page "/projects/{ProjectId:guid}/documents"
+@attribute [Authorize(Policy = Permissions.Documents.View)]
+@inject GetProjectHandler ProjectReader
+@inject ListDocumentsHandler DocumentList
+
+<PageTitle>Document register</PageTitle>
+
+@if (_project is null)
+{
+    <h1>Project not found</h1>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <h1>Document register</h1>
+            <p>@_project.ProjectNumber · @_project.Name</p>
+        </div>
+
+        @if (_project.Status == ProjectStatus.Active)
+        {
+            <AuthorizeView Policy="@Permissions.Documents.Create">
+                <Authorized>
+                    <a class="button-link"
+                       href="@($"/projects/{ProjectId}/documents/create")">
+                        Register document
+                    </a>
+                </Authorized>
+            </AuthorizeView>
+        }
+    </div>
+
+    <div class="filter-bar">
+        <input type="search"
+               placeholder="Search number, title, category, discipline, or originator"
+               @bind="_search" />
+
+        <select @bind="_status">
+            <option value="">All statuses</option>
+            @foreach (var status in Enum.GetValues<DocumentStatus>())
+            {
+                <option value="@status">@status</option>
+            }
+        </select>
+
+        <button type="button" @onclick="ApplyFilterAsync">
+            Search
+        </button>
+    </div>
+
+    @if (_result is null)
+    {
+        <p>Loading...</p>
+    }
+    else if (_result.Items.Count == 0)
+    {
+        <p>No documents found.</p>
+    }
+    else
+    {
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Document no.</th>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <th>Discipline</th>
+                    <th>Originator</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var document in _result.Items)
+                {
+                    <tr>
+                        <td>@document.DocumentNumber</td>
+                        <td>@document.Title</td>
+                        <td>@(document.Category ?? "—")</td>
+                        <td>@(document.Discipline ?? "—")</td>
+                        <td>@(document.Originator ?? "—")</td>
+                        <td>@document.Status</td>
+                        <td>
+                            <a href="@($"/documents/{document.Id}")">
+                                View
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="pagination">
+            <button type="button"
+                    disabled="@(_result.Page <= 1)"
+                    @onclick="PreviousPageAsync">
+                Previous
+            </button>
+
+            <span>
+                Page @_result.Page of @_result.TotalPages
+                · @_result.TotalCount total
+            </span>
+
+            <button type="button"
+                    disabled="@(_result.Page >= _result.TotalPages)"
+                    @onclick="NextPageAsync">
+                Next
+            </button>
+        </div>
+    }
+}
+
+@code {
+    [Parameter]
+    public Guid ProjectId { get; set; }
+
+    private Application.Projects.ProjectDetails? _project;
+    private DocumentListResult? _result;
+    private string? _search;
+    private string _status = string.Empty;
+    private int _page = 1;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _project = await ProjectReader.HandleAsync(ProjectId);
+        await LoadAsync();
+    }
+
+    private async Task ApplyFilterAsync()
+    {
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        _page = Math.Max(1, _page - 1);
+        await LoadAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (_result is null)
+        {
+            return;
+        }
+
+        _page = Math.Min(_result.TotalPages, _page + 1);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        DocumentStatus? status = Enum.TryParse<DocumentStatus>(
+            _status,
+            ignoreCase: true,
+            out var parsed)
+            ? parsed
+            : null;
+
+        _result = await DocumentList.HandleAsync(
+            new ListDocumentsRequest(
+                ProjectId,
+                _search,
+                status,
+                _page));
+    }
+}

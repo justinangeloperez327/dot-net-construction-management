@@ -28,6 +28,15 @@ else
                 </Authorized>
             </AuthorizeView>
 
+            <AuthorizeView Policy="@Permissions.Documents.View">
+                <Authorized>
+                    <a class="button-link"
+                       href="@($"/projects/{Id}/documents")">
+                        Documents
+                    </a>
+                </Authorized>
+            </AuthorizeView>
+
             @if (_project.Status == ProjectStatus.Active)
             {
                 <AuthorizeView Policy="@Permissions.Projects.Update">
