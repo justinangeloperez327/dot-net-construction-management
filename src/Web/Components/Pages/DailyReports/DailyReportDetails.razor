@@ -272,7 +272,7 @@ else
     [Parameter]
     public Guid Id { get; set; }
 
-    private DailyReportDetails? _report;
+    private Application.DailyReports.DailyReportDetails? _report;
     private readonly HeaderModel _header = new();
     private readonly ActivityModel _newActivity = new();
     private readonly Dictionary<Guid, ActivityModel> _activityEdits = [];
