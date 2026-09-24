@@ -1,0 +1,535 @@
+@page "/purchase-requests/{Id:guid}"
+@attribute [Authorize(Policy = Permissions.PurchaseRequests.View)]
+@inject GetPurchaseRequestHandler PurchaseRequestReader
+@inject GetProjectHandler ProjectReader
+@inject UpdatePurchaseRequestHandler PurchaseRequestUpdater
+@inject AddPurchaseRequestItemHandler ItemAdder
+@inject UpdatePurchaseRequestItemHandler ItemUpdater
+@inject RemovePurchaseRequestItemHandler ItemRemover
+@inject SubmitPurchaseRequestHandler PurchaseRequestSubmitter
+@inject CancelPurchaseRequestHandler PurchaseRequestCanceller
+@inject ListPurchaseRequestApproversHandler ApproverList
+
+<PageTitle>Purchase request</PageTitle>
+
+@if (_request is null)
+{
+    <h1>Purchase request not found</h1>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <h1>@_request.RequestNumber</h1>
+            <p>@_request.Title · @FormatStatus(_request.Status)</p>
+        </div>
+
+        <div class="page-actions">
+            @if (_request.ApprovalRequestId is Guid approvalId)
+            {
+                <a class="button-link"
+                   href="@($"/approvals/{approvalId}")">
+                    Approval
+                </a>
+            }
+
+            <a href="@($"/projects/{_request.ProjectId}/purchase-requests")">
+                Back to purchase requests
+            </a>
+        </div>
+    </div>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_message))
+    {
+        <p class="success-message">@_message</p>
+    }
+
+    <dl class="details-grid">
+        <dt>Status</dt>
+        <dd>@FormatStatus(_request.Status)</dd>
+
+        <dt>Requested by</dt>
+        <dd>@_request.RequestedBy</dd>
+
+        <dt>Created</dt>
+        <dd>@_request.CreatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")</dd>
+
+        <dt>Required by</dt>
+        <dd>@(_request.RequiredByDate?.ToString("dd MMM yyyy") ?? "—")</dd>
+
+        <dt>Purpose</dt>
+        <dd>@(_request.Purpose ?? "—")</dd>
+    </dl>
+
+    @if (IsEditable)
+    {
+        <AuthorizeView Policy="@Permissions.PurchaseRequests.Update">
+            <Authorized Context="authorizationState">
+                <section class="form-section">
+                    <h2>Edit request</h2>
+
+                    <EditForm Model="_header"
+                              OnValidSubmit="SaveHeaderAsync"
+                              class="form-grid"
+                              Context="headerEditContext">
+                        <DataAnnotationsValidator />
+
+                        <label for="request-number">PR number</label>
+                        <InputText id="request-number"
+                                   @bind-Value="_header.RequestNumber" />
+                        <ValidationMessage For="() => _header.RequestNumber" />
+
+                        <label for="title">Title</label>
+                        <InputText id="title"
+                                   @bind-Value="_header.Title" />
+                        <ValidationMessage For="() => _header.Title" />
+
+                        <label for="required-by">Required by</label>
+                        <InputDate id="required-by"
+                                   @bind-Value="_header.RequiredByDate" />
+
+                        <label for="purpose">Purpose / justification</label>
+                        <InputTextArea id="purpose"
+                                       @bind-Value="_header.Purpose" />
+
+                        <button type="submit">Save request</button>
+                    </EditForm>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+
+    <section class="form-section">
+        <h2>Requested items</h2>
+
+        @if (_request.Items.Count == 0)
+        {
+            <p>No items added.</p>
+        }
+        else
+        {
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th>Quantity</th>
+                        <th>Unit</th>
+                        <th>Remarks</th>
+                        @if (IsEditable)
+                        {
+                            <th></th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in _request.Items)
+                    {
+                        <tr>
+                            <td>@item.Description</td>
+                            <td>@item.Quantity</td>
+                            <td>@item.Unit</td>
+                            <td>@(item.Remarks ?? "—")</td>
+                            @if (IsEditable)
+                            {
+                                <td>
+                                    <AuthorizeView Policy="@Permissions.PurchaseRequests.Update">
+                                        <Authorized>
+                                            <button type="button"
+                                                    @onclick="() => BeginEditItem(item)">
+                                                Edit
+                                            </button>
+                                            <button type="button"
+                                                    class="danger-button"
+                                                    @onclick="() => RemoveItemAsync(item.Id)">
+                                                Remove
+                                            </button>
+                                        </Authorized>
+                                    </AuthorizeView>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        @if (IsEditable)
+        {
+            <AuthorizeView Policy="@Permissions.PurchaseRequests.Update">
+                <Authorized Context="authorizationState">
+                    <h3>@(_editingItemId is null ? "Add item" : "Edit item")</h3>
+
+                    <EditForm Model="_item"
+                              OnValidSubmit="SaveItemAsync"
+                              class="form-grid"
+                              Context="itemEditContext">
+                        <DataAnnotationsValidator />
+
+                        <label for="item-description">Description</label>
+                        <InputText id="item-description"
+                                   @bind-Value="_item.Description" />
+                        <ValidationMessage For="() => _item.Description" />
+
+                        <label for="quantity">Quantity</label>
+                        <InputNumber id="quantity"
+                                     @bind-Value="_item.Quantity" />
+
+                        <label for="unit">Unit</label>
+                        <InputText id="unit"
+                                   @bind-Value="_item.Unit" />
+                        <ValidationMessage For="() => _item.Unit" />
+
+                        <label for="item-remarks">Remarks</label>
+                        <InputTextArea id="item-remarks"
+                                       @bind-Value="_item.Remarks" />
+
+                        <div class="page-actions">
+                            <button type="submit">
+                                @(_editingItemId is null ? "Add item" : "Save item")
+                            </button>
+
+                            @if (_editingItemId is not null)
+                            {
+                                <button type="button"
+                                        @onclick="ResetItemForm">
+                                    Cancel edit
+                                </button>
+                            }
+                        </div>
+                    </EditForm>
+                </Authorized>
+            </AuthorizeView>
+        }
+    </section>
+
+    @if (IsEditable &&
+         _request.Items.Count > 0)
+    {
+        <AuthorizeView Policy="@Permissions.PurchaseRequests.Submit">
+            <Authorized Context="authorizationState">
+                <section class="form-section">
+                    <h2>Submit for approval</h2>
+                    <p>
+                        Define the approvers in the order they must decide.
+                    </p>
+
+                    @for (var index = 0; index < _approvalSteps.Count; index++)
+                    {
+                        var stepIndex = index;
+
+                        <div class="form-grid">
+                            <label>Step @(stepIndex + 1) name</label>
+                            <input maxlength="150"
+                                   @bind="_approvalSteps[stepIndex].Name" />
+
+                            <label>Approver</label>
+                            <select @bind="_approvalSteps[stepIndex].ApproverUserId">
+                                <option value="@Guid.Empty">Select approver</option>
+                                @foreach (var approver in _approvers)
+                                {
+                                    <option value="@approver.Id">
+                                        @approver.Email
+                                    </option>
+                                }
+                            </select>
+
+                            @if (_approvalSteps.Count > 1)
+                            {
+                                <button type="button"
+                                        class="danger-button"
+                                        @onclick="() => RemoveApprovalStep(stepIndex)">
+                                    Remove step
+                                </button>
+                            }
+                        </div>
+                    }
+
+                    <div class="page-actions">
+                        <button type="button"
+                                @onclick="AddApprovalStep">
+                            Add approval step
+                        </button>
+
+                        <button type="button"
+                                @onclick="SubmitAsync">
+                            Submit purchase request
+                        </button>
+                    </div>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+
+    @if (IsEditable)
+    {
+        <AuthorizeView Policy="@Permissions.PurchaseRequests.Cancel">
+            <Authorized>
+                <section class="danger-zone">
+                    <h2>Cancel purchase request</h2>
+                    <p>Cancelled requests remain in the project history.</p>
+                    <button type="button"
+                            class="danger-button"
+                            @onclick="CancelRequestAsync">
+                        Cancel purchase request
+                    </button>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private PurchaseRequestDetails? _request;
+    private Application.Projects.ProjectDetails? _project;
+    private IReadOnlyList<UserDirectoryEntry> _approvers = [];
+    private readonly PurchaseRequestFormModel _header = new();
+    private readonly ItemFormModel _item = new();
+    private readonly List<ApprovalStepFormModel> _approvalSteps =
+        [new()];
+    private Guid? _editingItemId;
+    private readonly List<string> _errors = [];
+    private string? _message;
+
+    private bool IsEditable =>
+        _project?.Status == ProjectStatus.Active &&
+        _request?.Status is PurchaseRequestStatus.Draft
+            or PurchaseRequestStatus.Rejected;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _approvers = await ApproverList.HandleAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _request = await PurchaseRequestReader.HandleAsync(Id);
+
+        if (_request is null)
+        {
+            _project = null;
+            return;
+        }
+
+        _project = await ProjectReader.HandleAsync(
+            _request.ProjectId);
+
+        _header.RequestNumber = _request.RequestNumber;
+        _header.Title = _request.Title;
+        _header.RequiredByDate = _request.RequiredByDate;
+        _header.Purpose = _request.Purpose;
+    }
+
+    private async Task SaveHeaderAsync()
+    {
+        ClearFeedback();
+
+        var result = await PurchaseRequestUpdater.HandleAsync(
+            Id,
+            new UpdatePurchaseRequestCommand(
+                _header.RequestNumber,
+                _header.Title,
+                _header.RequiredByDate,
+                _header.Purpose));
+
+        await HandleAsync(result, "Purchase request updated.");
+    }
+
+    private void BeginEditItem(
+        PurchaseRequestItemDetails item)
+    {
+        _editingItemId = item.Id;
+        _item.Description = item.Description;
+        _item.Quantity = item.Quantity;
+        _item.Unit = item.Unit;
+        _item.Remarks = item.Remarks;
+    }
+
+    private async Task SaveItemAsync()
+    {
+        ClearFeedback();
+
+        var wasEditing = _editingItemId is not null;
+
+        var command = new PurchaseRequestItemCommand(
+            _item.Description,
+            _item.Quantity,
+            _item.Unit,
+            _item.Remarks);
+
+        var result = _editingItemId is Guid itemId
+            ? await ItemUpdater.HandleAsync(Id, itemId, command)
+            : await ItemAdder.HandleAsync(Id, command);
+
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        ResetItemForm();
+        _message = wasEditing
+            ? "Item updated."
+            : "Item added.";
+
+        await LoadAsync();
+    }
+
+    private async Task RemoveItemAsync(Guid itemId)
+    {
+        ClearFeedback();
+
+        var result = await ItemRemover.HandleAsync(
+            Id,
+            itemId);
+
+        await HandleAsync(result, "Item removed.");
+    }
+
+    private async Task SubmitAsync()
+    {
+        ClearFeedback();
+
+        if (_approvalSteps.Any(step =>
+                string.IsNullOrWhiteSpace(step.Name) ||
+                step.ApproverUserId == Guid.Empty))
+        {
+            _errors.Add(
+                "Every approval step requires a name and approver.");
+            return;
+        }
+
+        var result = await PurchaseRequestSubmitter.HandleAsync(
+            Id,
+            new SubmitPurchaseRequestCommand(
+                _approvalSteps
+                    .Select(step => new ApprovalStepInput(
+                        step.Name,
+                        step.ApproverUserId))
+                    .ToArray()));
+
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        _message = "Purchase request submitted for approval.";
+        await LoadAsync();
+    }
+
+    private async Task CancelRequestAsync()
+    {
+        ClearFeedback();
+
+        var result = await PurchaseRequestCanceller.HandleAsync(Id);
+
+        await HandleAsync(
+            result,
+            "Purchase request cancelled.");
+    }
+
+    private async Task HandleAsync(
+        PurchaseRequestActionResult result,
+        string message)
+    {
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        _message = message;
+        await LoadAsync();
+    }
+
+    private void AddApprovalStep()
+    {
+        _approvalSteps.Add(new ApprovalStepFormModel());
+    }
+
+    private void RemoveApprovalStep(int index)
+    {
+        if (_approvalSteps.Count > 1)
+        {
+            _approvalSteps.RemoveAt(index);
+        }
+    }
+
+    private void ResetItemForm()
+    {
+        _editingItemId = null;
+        _item.Description = string.Empty;
+        _item.Quantity = 1;
+        _item.Unit = string.Empty;
+        _item.Remarks = null;
+    }
+
+    private void ClearFeedback()
+    {
+        _errors.Clear();
+        _message = null;
+    }
+
+    private static string FormatStatus(
+        PurchaseRequestStatus status) =>
+        status == PurchaseRequestStatus.PendingApproval
+            ? "Pending approval"
+            : status.ToString();
+
+    private sealed class PurchaseRequestFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string RequestNumber { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(300)]
+        public string Title { get; set; } = string.Empty;
+
+        public DateOnly? RequiredByDate { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(2000)]
+        public string? Purpose { get; set; }
+    }
+
+    private sealed class ItemFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(500)]
+        public string Description { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Range(
+            typeof(decimal),
+            "0.001",
+            "999999999999999.999")]
+        public decimal Quantity { get; set; } = 1;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(50)]
+        public string Unit { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.StringLength(1000)]
+        public string? Remarks { get; set; }
+    }
+
+    private sealed class ApprovalStepFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+
+        public Guid ApproverUserId { get; set; }
+    }
+}

@@ -1,4 +1,5 @@
 using Application.Common.Authentication;
+using Application.Common.Persistence;
 using Domain.Approvals;
 
 namespace Application.Approvals;
@@ -9,6 +10,8 @@ public sealed record DecideApprovalStepCommand(
 
 public sealed class DecideApprovalStepHandler(
     IApprovalRequestRepository approvals,
+    IEnumerable<IApprovalSubjectOutcomeHandler> outcomeHandlers,
+    IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
     TimeProvider timeProvider)
 {
@@ -45,7 +48,12 @@ public sealed class DecideApprovalStepHandler(
                 timeProvider.GetUtcNow(),
                 command.Comments);
 
-            await approvals.SaveChangesAsync(cancellationToken);
+            await ApplyOutcomeAsync(
+                request,
+                outcomeHandlers,
+                cancellationToken);
+
+            await unitOfWork.SaveChangesAsync(cancellationToken);
 
             return ApprovalActionResult.Success(request.Id);
         }
@@ -56,10 +64,31 @@ public sealed class DecideApprovalStepHandler(
             return ApprovalActionResult.Failure(exception.Message);
         }
     }
+
+    private static async Task ApplyOutcomeAsync(
+        ApprovalRequest request,
+        IEnumerable<IApprovalSubjectOutcomeHandler> outcomeHandlers,
+        CancellationToken cancellationToken)
+    {
+        var handler = outcomeHandlers.SingleOrDefault(
+            item => string.Equals(
+                item.SubjectType,
+                request.SubjectType,
+                StringComparison.Ordinal));
+
+        if (handler is not null)
+        {
+            await handler.ApplyAsync(
+                request,
+                cancellationToken);
+        }
+    }
 }
 
 public sealed class CancelApprovalRequestHandler(
     IApprovalRequestRepository approvals,
+    IEnumerable<IApprovalSubjectOutcomeHandler> outcomeHandlers,
+    IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
     TimeProvider timeProvider)
 {
@@ -93,7 +122,20 @@ public sealed class CancelApprovalRequestHandler(
                 timeProvider.GetUtcNow(),
                 reason);
 
-            await approvals.SaveChangesAsync(cancellationToken);
+            var handler = outcomeHandlers.SingleOrDefault(
+                item => string.Equals(
+                    item.SubjectType,
+                    request.SubjectType,
+                    StringComparison.Ordinal));
+
+            if (handler is not null)
+            {
+                await handler.ApplyAsync(
+                    request,
+                    cancellationToken);
+            }
+
+            await unitOfWork.SaveChangesAsync(cancellationToken);
 
             return ApprovalActionResult.Success(request.Id);
         }

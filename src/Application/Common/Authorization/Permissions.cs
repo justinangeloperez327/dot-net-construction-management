@@ -36,6 +36,15 @@ public static class Permissions
         public const string SetActive = "suppliers.set_active";
     }
 
+    public static class PurchaseRequests
+    {
+        public const string View = "purchase_requests.view";
+        public const string Create = "purchase_requests.create";
+        public const string Update = "purchase_requests.update";
+        public const string Submit = "purchase_requests.submit";
+        public const string Cancel = "purchase_requests.cancel";
+    }
+
     public static class Projects
     {
         public const string View = "projects.view";
@@ -93,6 +102,11 @@ public static class Permissions
         Suppliers.Create,
         Suppliers.Update,
         Suppliers.SetActive,
+        PurchaseRequests.View,
+        PurchaseRequests.Create,
+        PurchaseRequests.Update,
+        PurchaseRequests.Submit,
+        PurchaseRequests.Cancel,
         Projects.View,
         Projects.Create,
         Projects.Update,

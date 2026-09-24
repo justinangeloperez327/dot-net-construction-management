@@ -2,65 +2,43 @@
 
 A deployable construction project management application built with .NET 10 and Blazor using Clean Architecture.
 
-## Architecture
-
-The solution has four production projects:
-
-- **Domain** — business rules and domain model.
-- **Application** — use cases and application abstractions.
-- **Infrastructure** — persistence, identity, files, and integrations.
-- **Web** — ASP.NET Core + Blazor presentation and composition root.
-
-Dependencies point inward.
-
 ## Current milestone
 
-**Group 13 — Suppliers**
+Group 14 — Purchase Requests
 
-The application now includes a company-wide supplier master for procurement.
+The application now supports project-scoped Purchase Requests with:
 
-Supplier records support:
-
-- unique supplier code
-- supplier name
-- flexible category / trade
-- contact person
-- email
-- phone
-- address
-- registration number
-- tax registration number
-- Active / Inactive lifecycle
-- search and status filtering
-- pagination
-- permission-controlled create/update/activation
-- active-supplier lookup for future procurement modules
+- project-scoped PR numbering
+- title and purpose / justification
+- optional required-by date
+- requested-by identity and creation timestamp
+- line items with description, quantity, unit, and remarks
+- Draft / Pending Approval / Approved / Rejected / Cancelled lifecycle
+- edit and resubmit after rejection
+- ordered approval-chain selection
+- Group 12 approval-engine integration
+- automatic approval outcome synchronization
+- project closure protection
+- pagination and status filtering
 - SQL Server persistence
-- Blazor supplier register and detail pages
-- Domain, Application, and integration tests
+- Blazor create/register/detail workflow
 
-Supplier records are not project-specific. Projects, Purchase Requests, Purchase Orders, quotation history, supplier qualification, and performance scoring will reference the company supplier master when those workflows are introduced.
+Purchase Requests intentionally do not select suppliers or establish final prices. They define what the project needs. Supplier selection and committed commercial terms belong to later procurement stages.
+
+Group 14 also introduces a narrow IUnitOfWork because submission is the first workflow that must atomically persist changes across PurchaseRequest and ApprovalRequest.
 
 ## Build
 
 Requires the .NET 10 SDK.
 
-```bash
 dotnet tool restore
 dotnet restore CPM.slnx
 dotnet build CPM.slnx --configuration Release --no-restore
 dotnet test CPM.slnx --configuration Release --no-build
-```
 
-Apply database migrations explicitly:
+Apply database migrations explicitly with dotnet ef database update using Infrastructure as the migration project and Web as the startup project.
 
-```bash
-dotnet ef database update --project src/Infrastructure --startup-project src/Web
-```
-
-See:
-- `docs/approval-workflow.md`
-- `docs/suppliers.md`
+See docs/purchase-requests.md.
 
 ## Planned development order
 

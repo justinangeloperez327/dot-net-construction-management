@@ -3,6 +3,7 @@ using Application.Clients;
 using Application.DailyReports;
 using Application.Documents;
 using Application.Projects;
+using Application.PurchaseRequests;
 using Application.Suppliers;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -80,6 +81,20 @@ public static class DependencyInjection
         services.AddScoped<GetSupplierHandler>();
         services.AddScoped<ListSuppliersHandler>();
         services.AddScoped<ListActiveSuppliersHandler>();
+
+        services.AddScoped<CreatePurchaseRequestHandler>();
+        services.AddScoped<UpdatePurchaseRequestHandler>();
+        services.AddScoped<AddPurchaseRequestItemHandler>();
+        services.AddScoped<UpdatePurchaseRequestItemHandler>();
+        services.AddScoped<RemovePurchaseRequestItemHandler>();
+        services.AddScoped<SubmitPurchaseRequestHandler>();
+        services.AddScoped<CancelPurchaseRequestHandler>();
+        services.AddScoped<GetPurchaseRequestHandler>();
+        services.AddScoped<ListPurchaseRequestsHandler>();
+        services.AddScoped<ListPurchaseRequestApproversHandler>();
+        services.AddScoped<
+            IApprovalSubjectOutcomeHandler,
+            PurchaseRequestApprovalOutcomeHandler>();
 
         return services;
     }

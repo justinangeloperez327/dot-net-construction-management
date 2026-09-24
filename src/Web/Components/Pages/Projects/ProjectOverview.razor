@@ -37,6 +37,15 @@ else
                 </Authorized>
             </AuthorizeView>
 
+            <AuthorizeView Policy="@Permissions.PurchaseRequests.View">
+                <Authorized>
+                    <a class="button-link"
+                       href="@($"/projects/{Id}/purchase-requests")">
+                        Purchase requests
+                    </a>
+                </Authorized>
+            </AuthorizeView>
+
             @if (_project.Status == ProjectStatus.Active)
             {
                 <AuthorizeView Policy="@Permissions.Projects.Update">
