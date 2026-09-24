@@ -153,6 +153,113 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("DailyReportActivities", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.DailyReports.DailyReportEquipmentEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("DailyReportId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Equipment")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal?>("HoursUsed")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<string>("Identifier")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DailyReportId");
+
+                    b.ToTable("DailyReportEquipment", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.DailyReports.DailyReportManpowerEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Contractor")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("DailyReportId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Headcount")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("ManHours")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Trade")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DailyReportId");
+
+                    b.ToTable("DailyReportManpower", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.DailyReports.DailyReportSiteIssue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ActionTaken")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<Guid>("DailyReportId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DailyReportId");
+
+                    b.ToTable("DailyReportSiteIssues", (string)null);
+                });
+
             modelBuilder.Entity("Domain.Projects.Project", b =>
                 {
                     b.Property<Guid>("Id")
@@ -451,6 +558,33 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Domain.DailyReports.DailyReportEquipmentEntry", b =>
+                {
+                    b.HasOne("Domain.DailyReports.DailyReport", null)
+                        .WithMany("EquipmentEntries")
+                        .HasForeignKey("DailyReportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.DailyReports.DailyReportManpowerEntry", b =>
+                {
+                    b.HasOne("Domain.DailyReports.DailyReport", null)
+                        .WithMany("ManpowerEntries")
+                        .HasForeignKey("DailyReportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.DailyReports.DailyReportSiteIssue", b =>
+                {
+                    b.HasOne("Domain.DailyReports.DailyReport", null)
+                        .WithMany("SiteIssues")
+                        .HasForeignKey("DailyReportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Domain.Projects.Project", b =>
                 {
                     b.HasOne("Domain.Clients.Client", null)
@@ -528,6 +662,12 @@ namespace Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Domain.DailyReports.DailyReport", b =>
                 {
                     b.Navigation("Activities");
+
+                    b.Navigation("EquipmentEntries");
+
+                    b.Navigation("ManpowerEntries");
+
+                    b.Navigation("SiteIssues");
                 });
 #pragma warning restore 612, 618
         }
