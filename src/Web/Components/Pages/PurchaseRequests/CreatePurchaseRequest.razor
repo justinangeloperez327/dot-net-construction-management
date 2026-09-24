@@ -1,0 +1,119 @@
+@page "/projects/{ProjectId:guid}/purchase-requests/create"
+@attribute [Authorize(Policy = Permissions.PurchaseRequests.Create)]
+@inject GetProjectHandler ProjectReader
+@inject CreatePurchaseRequestHandler PurchaseRequestCreator
+@inject NavigationManager Navigation
+
+<PageTitle>Create purchase request</PageTitle>
+
+@if (_project is null)
+{
+    <h1>Project not found</h1>
+}
+else if (_project.Status == ProjectStatus.Closed)
+{
+    <h1>Create purchase request</h1>
+    <p>Purchase requests cannot be created for a closed project.</p>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <h1>Create purchase request</h1>
+            <p>@_project.ProjectNumber · @_project.Name</p>
+        </div>
+
+        <a href="@($"/projects/{ProjectId}/purchase-requests")">
+            Back to purchase requests
+        </a>
+    </div>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    <EditForm Model="_model"
+              OnValidSubmit="CreateAsync"
+              class="form-grid">
+        <DataAnnotationsValidator />
+
+        <label for="request-number">PR number</label>
+        <InputText id="request-number"
+                   @bind-Value="_model.RequestNumber" />
+        <ValidationMessage For="() => _model.RequestNumber" />
+
+        <label for="title">Title</label>
+        <InputText id="title"
+                   @bind-Value="_model.Title" />
+        <ValidationMessage For="() => _model.Title" />
+
+        <label for="required-by">Required by</label>
+        <InputDate id="required-by"
+                   @bind-Value="_model.RequiredByDate" />
+
+        <label for="purpose">Purpose / justification</label>
+        <InputTextArea id="purpose"
+                       @bind-Value="_model.Purpose" />
+
+        <button type="submit">Create draft</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public Guid ProjectId { get; set; }
+
+    private Application.Projects.ProjectDetails? _project;
+    private readonly PurchaseRequestFormModel _model = new();
+    private readonly List<string> _errors = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _project = await ProjectReader.HandleAsync(ProjectId);
+    }
+
+    private async Task CreateAsync()
+    {
+        _errors.Clear();
+
+        var result = await PurchaseRequestCreator.HandleAsync(
+            new CreatePurchaseRequestCommand(
+                ProjectId,
+                _model.RequestNumber,
+                _model.Title,
+                _model.RequiredByDate,
+                _model.Purpose));
+
+        if (result.Succeeded &&
+            result.PurchaseRequestId is Guid purchaseRequestId)
+        {
+            Navigation.NavigateTo(
+                $"/purchase-requests/{purchaseRequestId}");
+            return;
+        }
+
+        _errors.AddRange(result.Errors);
+    }
+
+    private sealed class PurchaseRequestFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string RequestNumber { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(300)]
+        public string Title { get; set; } = string.Empty;
+
+        public DateOnly? RequiredByDate { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(2000)]
+        public string? Purpose { get; set; }
+    }
+}

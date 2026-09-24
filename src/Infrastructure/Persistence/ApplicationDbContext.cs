@@ -3,6 +3,7 @@ using Domain.Clients;
 using Domain.DailyReports;
 using Domain.Documents;
 using Domain.Projects;
+using Domain.PurchaseRequests;
 using Domain.Suppliers;
 using Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
@@ -50,6 +51,12 @@ public sealed class ApplicationDbContext(
         Set<ApprovalStep>();
 
     public DbSet<Supplier> Suppliers => Set<Supplier>();
+
+    public DbSet<PurchaseRequest> PurchaseRequests =>
+        Set<PurchaseRequest>();
+
+    public DbSet<PurchaseRequestItem> PurchaseRequestItems =>
+        Set<PurchaseRequestItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
