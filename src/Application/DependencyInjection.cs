@@ -41,6 +41,16 @@ public static class DependencyInjection
         services.AddScoped<GetDailyReportHandler>();
         services.AddScoped<ListDailyReportsHandler>();
 
+        services.AddScoped<AddManpowerEntryHandler>();
+        services.AddScoped<UpdateManpowerEntryHandler>();
+        services.AddScoped<RemoveManpowerEntryHandler>();
+        services.AddScoped<AddEquipmentEntryHandler>();
+        services.AddScoped<UpdateEquipmentEntryHandler>();
+        services.AddScoped<RemoveEquipmentEntryHandler>();
+        services.AddScoped<AddSiteIssueHandler>();
+        services.AddScoped<UpdateSiteIssueHandler>();
+        services.AddScoped<RemoveSiteIssueHandler>();
+
         return services;
     }
 }

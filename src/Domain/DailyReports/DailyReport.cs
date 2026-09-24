@@ -3,6 +3,9 @@ namespace Domain.DailyReports;
 public sealed class DailyReport
 {
     private readonly List<DailyReportActivity> _activities = [];
+    private readonly List<DailyReportManpowerEntry> _manpowerEntries = [];
+    private readonly List<DailyReportEquipmentEntry> _equipmentEntries = [];
+    private readonly List<DailyReportSiteIssue> _siteIssues = [];
 
     private DailyReport()
     {
@@ -62,6 +65,15 @@ public sealed class DailyReport
 
     public IReadOnlyCollection<DailyReportActivity> Activities => _activities;
 
+    public IReadOnlyCollection<DailyReportManpowerEntry> ManpowerEntries =>
+        _manpowerEntries;
+
+    public IReadOnlyCollection<DailyReportEquipmentEntry> EquipmentEntries =>
+        _equipmentEntries;
+
+    public IReadOnlyCollection<DailyReportSiteIssue> SiteIssues =>
+        _siteIssues;
+
     public static DailyReport Create(
         Guid projectId,
         DateOnly reportDate,
@@ -119,9 +131,7 @@ public sealed class DailyReport
     {
         EnsureEditable();
 
-        var item = FindActivity(activityId);
-
-        item.Update(
+        FindActivity(activityId).Update(
             workArea,
             activity,
             status,
@@ -132,9 +142,141 @@ public sealed class DailyReport
     public void RemoveActivity(Guid activityId)
     {
         EnsureEditable();
+        _activities.Remove(FindActivity(activityId));
+    }
 
-        var item = FindActivity(activityId);
-        _activities.Remove(item);
+    public DailyReportManpowerEntry AddManpower(
+        string trade,
+        string? contractor,
+        int headcount,
+        decimal? manHours,
+        string? remarks)
+    {
+        EnsureEditable();
+
+        var item = new DailyReportManpowerEntry(
+            Id,
+            trade,
+            contractor,
+            headcount,
+            manHours,
+            remarks);
+
+        _manpowerEntries.Add(item);
+
+        return item;
+    }
+
+    public void UpdateManpower(
+        Guid entryId,
+        string trade,
+        string? contractor,
+        int headcount,
+        decimal? manHours,
+        string? remarks)
+    {
+        EnsureEditable();
+
+        FindManpower(entryId).Update(
+            trade,
+            contractor,
+            headcount,
+            manHours,
+            remarks);
+    }
+
+    public void RemoveManpower(Guid entryId)
+    {
+        EnsureEditable();
+        _manpowerEntries.Remove(FindManpower(entryId));
+    }
+
+    public DailyReportEquipmentEntry AddEquipment(
+        string equipment,
+        string? identifier,
+        int quantity,
+        decimal? hoursUsed,
+        string? remarks)
+    {
+        EnsureEditable();
+
+        var item = new DailyReportEquipmentEntry(
+            Id,
+            equipment,
+            identifier,
+            quantity,
+            hoursUsed,
+            remarks);
+
+        _equipmentEntries.Add(item);
+
+        return item;
+    }
+
+    public void UpdateEquipment(
+        Guid entryId,
+        string equipment,
+        string? identifier,
+        int quantity,
+        decimal? hoursUsed,
+        string? remarks)
+    {
+        EnsureEditable();
+
+        FindEquipment(entryId).Update(
+            equipment,
+            identifier,
+            quantity,
+            hoursUsed,
+            remarks);
+    }
+
+    public void RemoveEquipment(Guid entryId)
+    {
+        EnsureEditable();
+        _equipmentEntries.Remove(FindEquipment(entryId));
+    }
+
+    public DailyReportSiteIssue AddSiteIssue(
+        string title,
+        string description,
+        string? actionTaken,
+        SiteIssueStatus status)
+    {
+        EnsureEditable();
+
+        var item = new DailyReportSiteIssue(
+            Id,
+            title,
+            description,
+            actionTaken,
+            status);
+
+        _siteIssues.Add(item);
+
+        return item;
+    }
+
+    public void UpdateSiteIssue(
+        Guid issueId,
+        string title,
+        string description,
+        string? actionTaken,
+        SiteIssueStatus status)
+    {
+        EnsureEditable();
+
+        FindSiteIssue(issueId).Update(
+            title,
+            description,
+            actionTaken,
+            status);
+    }
+
+    public void RemoveSiteIssue(Guid issueId)
+    {
+        EnsureEditable();
+        _siteIssues.Remove(FindSiteIssue(issueId));
     }
 
     public void Submit(DateTimeOffset submittedAt)
@@ -191,13 +333,25 @@ public sealed class DailyReport
         ReviewComments = comments;
     }
 
-    private DailyReportActivity FindActivity(Guid activityId)
-    {
-        return _activities.SingleOrDefault(
-                activity => activity.Id == activityId)
-            ?? throw new InvalidOperationException(
-                "Daily report activity was not found.");
-    }
+    private DailyReportActivity FindActivity(Guid activityId) =>
+        _activities.SingleOrDefault(activity => activity.Id == activityId)
+        ?? throw new InvalidOperationException(
+            "Daily report activity was not found.");
+
+    private DailyReportManpowerEntry FindManpower(Guid entryId) =>
+        _manpowerEntries.SingleOrDefault(entry => entry.Id == entryId)
+        ?? throw new InvalidOperationException(
+            "Manpower entry was not found.");
+
+    private DailyReportEquipmentEntry FindEquipment(Guid entryId) =>
+        _equipmentEntries.SingleOrDefault(entry => entry.Id == entryId)
+        ?? throw new InvalidOperationException(
+            "Equipment entry was not found.");
+
+    private DailyReportSiteIssue FindSiteIssue(Guid issueId) =>
+        _siteIssues.SingleOrDefault(issue => issue.Id == issueId)
+        ?? throw new InvalidOperationException(
+            "Site issue was not found.");
 
     private void EnsureEditable()
     {
@@ -228,10 +382,8 @@ public sealed class DailyReport
         }
     }
 
-    private static string? NormalizeOptional(string? value)
-    {
-        return string.IsNullOrWhiteSpace(value)
+    private static string? NormalizeOptional(string? value) =>
+        string.IsNullOrWhiteSpace(value)
             ? null
             : value.Trim();
-    }
 }

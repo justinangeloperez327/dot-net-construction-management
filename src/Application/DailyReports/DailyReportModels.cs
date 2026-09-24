@@ -10,6 +10,29 @@ public sealed record DailyReportActivityDetails(
     decimal? ProgressPercent,
     string? Remarks);
 
+public sealed record ManpowerEntryDetails(
+    Guid Id,
+    string Trade,
+    string? Contractor,
+    int Headcount,
+    decimal? ManHours,
+    string? Remarks);
+
+public sealed record EquipmentEntryDetails(
+    Guid Id,
+    string Equipment,
+    string? Identifier,
+    int Quantity,
+    decimal? HoursUsed,
+    string? Remarks);
+
+public sealed record SiteIssueDetails(
+    Guid Id,
+    string Title,
+    string Description,
+    string? ActionTaken,
+    SiteIssueStatus Status);
+
 public sealed record DailyReportSummary(
     Guid Id,
     DateOnly ReportDate,
@@ -29,7 +52,10 @@ public sealed record DailyReportDetails(
     string? ReviewedBy,
     DateTimeOffset? ReviewedAt,
     string? ReviewComments,
-    IReadOnlyList<DailyReportActivityDetails> Activities);
+    IReadOnlyList<DailyReportActivityDetails> Activities,
+    IReadOnlyList<ManpowerEntryDetails> ManpowerEntries,
+    IReadOnlyList<EquipmentEntryDetails> EquipmentEntries,
+    IReadOnlyList<SiteIssueDetails> SiteIssues);
 
 public sealed record DailyReportListResult(
     IReadOnlyList<DailyReportSummary> Items,

@@ -34,10 +34,21 @@ jobs:
       - name: Build
         run: dotnet build CPM.slnx --configuration Release --no-restore
 
-      - name: Check migration model
+      - name: Generate Group 8 migration preview
         env:
-          ConnectionStrings__Database: "Server=localhost;Database=ConstructionManagement;User ID=sa;Password=NotUsedInMigrationCheck1!;TrustServerCertificate=True"
-        run: dotnet ef migrations has-pending-model-changes --project src/Infrastructure --startup-project src/Web --configuration Release --no-build
+          ConnectionStrings__Database: "Server=localhost;Database=ConstructionManagement;User ID=sa;Password=NotUsedInMigration1!;TrustServerCertificate=True"
+        run: |
+          dotnet ef migrations add AddDailyReportResources --project src/Infrastructure --startup-project src/Web --output-dir Persistence/Migrations --configuration Release --no-build
+
+          for file in src/Infrastructure/Persistence/Migrations/*AddDailyReportResources*; do
+            echo "===== BEGIN $file ====="
+            cat "$file"
+            echo "===== END $file ====="
+          done
+
+          echo "===== BEGIN src/Infrastructure/Persistence/Migrations/ApplicationDbContextModelSnapshot.cs ====="
+          cat src/Infrastructure/Persistence/Migrations/ApplicationDbContextModelSnapshot.cs
+          echo "===== END src/Infrastructure/Persistence/Migrations/ApplicationDbContextModelSnapshot.cs ====="
 
       - name: Test
         run: dotnet test CPM.slnx --configuration Release --no-build --verbosity normal

@@ -23,6 +23,15 @@ public sealed class ApplicationDbContext(
     public DbSet<DailyReportActivity> DailyReportActivities =>
         Set<DailyReportActivity>();
 
+    public DbSet<DailyReportManpowerEntry> DailyReportManpower =>
+        Set<DailyReportManpowerEntry>();
+
+    public DbSet<DailyReportEquipmentEntry> DailyReportEquipment =>
+        Set<DailyReportEquipmentEntry>();
+
+    public DbSet<DailyReportSiteIssue> DailyReportSiteIssues =>
+        Set<DailyReportSiteIssue>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

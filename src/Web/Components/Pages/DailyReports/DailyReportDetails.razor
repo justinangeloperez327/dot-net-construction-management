@@ -22,9 +22,14 @@ else
             <p>@_report.ReportDate.ToString("dd MMM yyyy") · @_report.Status</p>
         </div>
 
-        <a href="@($"/projects/{_report.ProjectId}/daily-reports")">
-            Back to reports
-        </a>
+        <div class="page-actions">
+            <a href="@($"/daily-reports/{Id}/site-resources")">
+                Site resources
+            </a>
+            <a href="@($"/projects/{_report.ProjectId}/daily-reports")">
+                Back to reports
+            </a>
+        </div>
     </div>
 
     @if (_errors.Count > 0)
@@ -60,6 +65,15 @@ else
 
         <dt>Review comments</dt>
         <dd>@(_report.ReviewComments ?? "—")</dd>
+
+        <dt>Manpower entries</dt>
+        <dd>@_report.ManpowerEntries.Count</dd>
+
+        <dt>Equipment entries</dt>
+        <dd>@_report.EquipmentEntries.Count</dd>
+
+        <dt>Open site issues</dt>
+        <dd>@_report.SiteIssues.Count(issue => issue.Status == SiteIssueStatus.Open)</dd>
     </dl>
 
     @if (IsEditable)

@@ -59,7 +59,31 @@ public sealed class DailyReportConfiguration
             .HasForeignKey(activity => activity.DailyReportId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasMany(report => report.ManpowerEntries)
+            .WithOne()
+            .HasForeignKey(entry => entry.DailyReportId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(report => report.EquipmentEntries)
+            .WithOne()
+            .HasForeignKey(entry => entry.DailyReportId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(report => report.SiteIssues)
+            .WithOne()
+            .HasForeignKey(issue => issue.DailyReportId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.Navigation(report => report.Activities)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.Navigation(report => report.ManpowerEntries)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.Navigation(report => report.EquipmentEntries)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.Navigation(report => report.SiteIssues)
             .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }
