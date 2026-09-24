@@ -14,6 +14,10 @@ public sealed class DailyReportRepository(
     {
         return dbContext.DailyReports
             .Include(report => report.Activities)
+            .Include(report => report.ManpowerEntries)
+            .Include(report => report.EquipmentEntries)
+            .Include(report => report.SiteIssues)
+            .AsSplitQuery()
             .SingleOrDefaultAsync(
                 report => report.Id == reportId,
                 cancellationToken);

@@ -70,6 +70,38 @@ public sealed class GetDailyReportHandler(
                     activity.Status,
                     activity.ProgressPercent,
                     activity.Remarks))
+                .ToArray(),
+            report.ManpowerEntries
+                .OrderBy(entry => entry.Trade)
+                .ThenBy(entry => entry.Contractor)
+                .Select(entry => new ManpowerEntryDetails(
+                    entry.Id,
+                    entry.Trade,
+                    entry.Contractor,
+                    entry.Headcount,
+                    entry.ManHours,
+                    entry.Remarks))
+                .ToArray(),
+            report.EquipmentEntries
+                .OrderBy(entry => entry.Equipment)
+                .ThenBy(entry => entry.Identifier)
+                .Select(entry => new EquipmentEntryDetails(
+                    entry.Id,
+                    entry.Equipment,
+                    entry.Identifier,
+                    entry.Quantity,
+                    entry.HoursUsed,
+                    entry.Remarks))
+                .ToArray(),
+            report.SiteIssues
+                .OrderBy(issue => issue.Status)
+                .ThenBy(issue => issue.Title)
+                .Select(issue => new SiteIssueDetails(
+                    issue.Id,
+                    issue.Title,
+                    issue.Description,
+                    issue.ActionTaken,
+                    issue.Status))
                 .ToArray());
     }
 }

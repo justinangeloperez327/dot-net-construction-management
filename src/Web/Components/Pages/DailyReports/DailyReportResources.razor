@@ -1,0 +1,618 @@
+@page "/daily-reports/{Id:guid}/site-resources"
+@attribute [Authorize(Policy = Permissions.DailyReports.View)]
+@inject GetDailyReportHandler ReportReader
+@inject AddManpowerEntryHandler ManpowerAdder
+@inject UpdateManpowerEntryHandler ManpowerUpdater
+@inject RemoveManpowerEntryHandler ManpowerRemover
+@inject AddEquipmentEntryHandler EquipmentAdder
+@inject UpdateEquipmentEntryHandler EquipmentUpdater
+@inject RemoveEquipmentEntryHandler EquipmentRemover
+@inject AddSiteIssueHandler IssueAdder
+@inject UpdateSiteIssueHandler IssueUpdater
+@inject RemoveSiteIssueHandler IssueRemover
+
+<PageTitle>Daily report site resources</PageTitle>
+
+@if (_report is null)
+{
+    <h1>Daily report not found</h1>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <h1>Manpower, equipment, and site issues</h1>
+            <p>@_report.ReportDate.ToString("dd MMM yyyy") · @_report.Status</p>
+        </div>
+
+        <a href="@($"/daily-reports/{Id}")">Back to report</a>
+    </div>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_message))
+    {
+        <p class="success-message">@_message</p>
+    }
+
+    <section class="form-section">
+        <h2>Manpower</h2>
+
+        @if (CanEdit)
+        {
+            <AuthorizeView Policy="@Permissions.DailyReports.Update">
+                <Authorized Context="authorizationState">
+                    <EditForm Model="_manpower"
+                              OnValidSubmit="SaveManpowerAsync"
+                              class="form-grid"
+                              Context="manpowerContext">
+                        <DataAnnotationsValidator />
+
+                        <label>Trade / discipline</label>
+                        <InputText @bind-Value="_manpower.Trade" />
+
+                        <label>Contractor / company</label>
+                        <InputText @bind-Value="_manpower.Contractor" />
+
+                        <label>Headcount</label>
+                        <InputNumber @bind-Value="_manpower.Headcount" />
+
+                        <label>Total man-hours</label>
+                        <InputNumber @bind-Value="_manpower.ManHours" />
+
+                        <label>Remarks</label>
+                        <InputTextArea @bind-Value="_manpower.Remarks" />
+
+                        <div class="page-actions">
+                            <button type="submit">
+                                @(_editingManpowerId is null ? "Add manpower" : "Save manpower")
+                            </button>
+
+                            @if (_editingManpowerId is not null)
+                            {
+                                <button type="button"
+                                        class="secondary-button"
+                                        @onclick="CancelManpowerEdit">
+                                    Cancel
+                                </button>
+                            }
+                        </div>
+                    </EditForm>
+                </Authorized>
+            </AuthorizeView>
+        }
+
+        @if (_report.ManpowerEntries.Count == 0)
+        {
+            <p>No manpower entries.</p>
+        }
+        else
+        {
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Trade</th>
+                        <th>Contractor</th>
+                        <th>Headcount</th>
+                        <th>Man-hours</th>
+                        <th>Remarks</th>
+                        @if (CanEdit) { <th></th> }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var entry in _report.ManpowerEntries)
+                    {
+                        <tr>
+                            <td>@entry.Trade</td>
+                            <td>@(entry.Contractor ?? "—")</td>
+                            <td>@entry.Headcount</td>
+                            <td>@(entry.ManHours?.ToString("0.##") ?? "—")</td>
+                            <td>@(entry.Remarks ?? "—")</td>
+                            @if (CanEdit)
+                            {
+                                <td>
+                                    <AuthorizeView Policy="@Permissions.DailyReports.Update">
+                                        <Authorized>
+                                            <div class="table-actions">
+                                                <button type="button"
+                                                        @onclick="() => EditManpower(entry)">
+                                                    Edit
+                                                </button>
+                                                <button type="button"
+                                                        class="danger-button"
+                                                        @onclick="() => RemoveManpowerAsync(entry.Id)">
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        </Authorized>
+                                    </AuthorizeView>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+
+    <section class="form-section">
+        <h2>Equipment</h2>
+
+        @if (CanEdit)
+        {
+            <AuthorizeView Policy="@Permissions.DailyReports.Update">
+                <Authorized Context="authorizationState">
+                    <EditForm Model="_equipment"
+                              OnValidSubmit="SaveEquipmentAsync"
+                              class="form-grid"
+                              Context="equipmentContext">
+                        <DataAnnotationsValidator />
+
+                        <label>Equipment</label>
+                        <InputText @bind-Value="_equipment.Equipment" />
+
+                        <label>Identifier / asset number</label>
+                        <InputText @bind-Value="_equipment.Identifier" />
+
+                        <label>Quantity</label>
+                        <InputNumber @bind-Value="_equipment.Quantity" />
+
+                        <label>Hours used</label>
+                        <InputNumber @bind-Value="_equipment.HoursUsed" />
+
+                        <label>Remarks</label>
+                        <InputTextArea @bind-Value="_equipment.Remarks" />
+
+                        <div class="page-actions">
+                            <button type="submit">
+                                @(_editingEquipmentId is null ? "Add equipment" : "Save equipment")
+                            </button>
+
+                            @if (_editingEquipmentId is not null)
+                            {
+                                <button type="button"
+                                        class="secondary-button"
+                                        @onclick="CancelEquipmentEdit">
+                                    Cancel
+                                </button>
+                            }
+                        </div>
+                    </EditForm>
+                </Authorized>
+            </AuthorizeView>
+        }
+
+        @if (_report.EquipmentEntries.Count == 0)
+        {
+            <p>No equipment entries.</p>
+        }
+        else
+        {
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Equipment</th>
+                        <th>Identifier</th>
+                        <th>Quantity</th>
+                        <th>Hours used</th>
+                        <th>Remarks</th>
+                        @if (CanEdit) { <th></th> }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var entry in _report.EquipmentEntries)
+                    {
+                        <tr>
+                            <td>@entry.Equipment</td>
+                            <td>@(entry.Identifier ?? "—")</td>
+                            <td>@entry.Quantity</td>
+                            <td>@(entry.HoursUsed?.ToString("0.##") ?? "—")</td>
+                            <td>@(entry.Remarks ?? "—")</td>
+                            @if (CanEdit)
+                            {
+                                <td>
+                                    <AuthorizeView Policy="@Permissions.DailyReports.Update">
+                                        <Authorized>
+                                            <div class="table-actions">
+                                                <button type="button"
+                                                        @onclick="() => EditEquipment(entry)">
+                                                    Edit
+                                                </button>
+                                                <button type="button"
+                                                        class="danger-button"
+                                                        @onclick="() => RemoveEquipmentAsync(entry.Id)">
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        </Authorized>
+                                    </AuthorizeView>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+
+    <section class="form-section">
+        <h2>Site issues</h2>
+
+        @if (CanEdit)
+        {
+            <AuthorizeView Policy="@Permissions.DailyReports.Update">
+                <Authorized Context="authorizationState">
+                    <EditForm Model="_issue"
+                              OnValidSubmit="SaveIssueAsync"
+                              class="form-grid"
+                              Context="issueContext">
+                        <DataAnnotationsValidator />
+
+                        <label>Title</label>
+                        <InputText @bind-Value="_issue.Title" />
+
+                        <label>Description</label>
+                        <InputTextArea @bind-Value="_issue.Description" />
+
+                        <label>Action taken</label>
+                        <InputTextArea @bind-Value="_issue.ActionTaken" />
+
+                        <label>Status</label>
+                        <InputSelect @bind-Value="_issue.Status">
+                            @foreach (var status in Enum.GetValues<SiteIssueStatus>())
+                            {
+                                <option value="@status">@status</option>
+                            }
+                        </InputSelect>
+
+                        <div class="page-actions">
+                            <button type="submit">
+                                @(_editingIssueId is null ? "Add site issue" : "Save site issue")
+                            </button>
+
+                            @if (_editingIssueId is not null)
+                            {
+                                <button type="button"
+                                        class="secondary-button"
+                                        @onclick="CancelIssueEdit">
+                                    Cancel
+                                </button>
+                            }
+                        </div>
+                    </EditForm>
+                </Authorized>
+            </AuthorizeView>
+        }
+
+        @if (_report.SiteIssues.Count == 0)
+        {
+            <p>No site issues recorded.</p>
+        }
+        else
+        {
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Description</th>
+                        <th>Action taken</th>
+                        <th>Status</th>
+                        @if (CanEdit) { <th></th> }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var issue in _report.SiteIssues)
+                    {
+                        <tr>
+                            <td>@issue.Title</td>
+                            <td>@issue.Description</td>
+                            <td>@(issue.ActionTaken ?? "—")</td>
+                            <td>@issue.Status</td>
+                            @if (CanEdit)
+                            {
+                                <td>
+                                    <AuthorizeView Policy="@Permissions.DailyReports.Update">
+                                        <Authorized>
+                                            <div class="table-actions">
+                                                <button type="button"
+                                                        @onclick="() => EditIssue(issue)">
+                                                    Edit
+                                                </button>
+                                                <button type="button"
+                                                        class="danger-button"
+                                                        @onclick="() => RemoveIssueAsync(issue.Id)">
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        </Authorized>
+                                    </AuthorizeView>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Application.DailyReports.DailyReportDetails? _report;
+
+    private readonly ManpowerModel _manpower = new();
+    private readonly EquipmentModel _equipment = new();
+    private readonly SiteIssueModel _issue = new();
+
+    private Guid? _editingManpowerId;
+    private Guid? _editingEquipmentId;
+    private Guid? _editingIssueId;
+
+    private readonly List<string> _errors = [];
+    private string? _message;
+
+    private bool CanEdit =>
+        _report?.Status is DailyReportStatus.Draft or DailyReportStatus.Rejected;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _report = await ReportReader.HandleAsync(Id);
+    }
+
+    private async Task SaveManpowerAsync()
+    {
+        ClearFeedback();
+
+        var request = new SaveManpowerEntryRequest(
+            _manpower.Trade,
+            _manpower.Contractor,
+            _manpower.Headcount,
+            _manpower.ManHours,
+            _manpower.Remarks);
+
+        var result = _editingManpowerId is Guid entryId
+            ? await ManpowerUpdater.HandleAsync(Id, entryId, request)
+            : await ManpowerAdder.HandleAsync(Id, request);
+
+        if (result.Succeeded)
+        {
+            CancelManpowerEdit();
+        }
+
+        await HandleAsync(result, "Manpower saved.");
+    }
+
+    private async Task RemoveManpowerAsync(Guid entryId)
+    {
+        ClearFeedback();
+
+        await HandleAsync(
+            await ManpowerRemover.HandleAsync(Id, entryId),
+            "Manpower entry removed.");
+    }
+
+    private void EditManpower(ManpowerEntryDetails entry)
+    {
+        _editingManpowerId = entry.Id;
+        _manpower.Trade = entry.Trade;
+        _manpower.Contractor = entry.Contractor;
+        _manpower.Headcount = entry.Headcount;
+        _manpower.ManHours = entry.ManHours;
+        _manpower.Remarks = entry.Remarks;
+    }
+
+    private void CancelManpowerEdit()
+    {
+        _editingManpowerId = null;
+        _manpower.Reset();
+    }
+
+    private async Task SaveEquipmentAsync()
+    {
+        ClearFeedback();
+
+        var request = new SaveEquipmentEntryRequest(
+            _equipment.Equipment,
+            _equipment.Identifier,
+            _equipment.Quantity,
+            _equipment.HoursUsed,
+            _equipment.Remarks);
+
+        var result = _editingEquipmentId is Guid entryId
+            ? await EquipmentUpdater.HandleAsync(Id, entryId, request)
+            : await EquipmentAdder.HandleAsync(Id, request);
+
+        if (result.Succeeded)
+        {
+            CancelEquipmentEdit();
+        }
+
+        await HandleAsync(result, "Equipment saved.");
+    }
+
+    private async Task RemoveEquipmentAsync(Guid entryId)
+    {
+        ClearFeedback();
+
+        await HandleAsync(
+            await EquipmentRemover.HandleAsync(Id, entryId),
+            "Equipment entry removed.");
+    }
+
+    private void EditEquipment(EquipmentEntryDetails entry)
+    {
+        _editingEquipmentId = entry.Id;
+        _equipment.Equipment = entry.Equipment;
+        _equipment.Identifier = entry.Identifier;
+        _equipment.Quantity = entry.Quantity;
+        _equipment.HoursUsed = entry.HoursUsed;
+        _equipment.Remarks = entry.Remarks;
+    }
+
+    private void CancelEquipmentEdit()
+    {
+        _editingEquipmentId = null;
+        _equipment.Reset();
+    }
+
+    private async Task SaveIssueAsync()
+    {
+        ClearFeedback();
+
+        var request = new SaveSiteIssueRequest(
+            _issue.Title,
+            _issue.Description,
+            _issue.ActionTaken,
+            _issue.Status);
+
+        var result = _editingIssueId is Guid issueId
+            ? await IssueUpdater.HandleAsync(Id, issueId, request)
+            : await IssueAdder.HandleAsync(Id, request);
+
+        if (result.Succeeded)
+        {
+            CancelIssueEdit();
+        }
+
+        await HandleAsync(result, "Site issue saved.");
+    }
+
+    private async Task RemoveIssueAsync(Guid issueId)
+    {
+        ClearFeedback();
+
+        await HandleAsync(
+            await IssueRemover.HandleAsync(Id, issueId),
+            "Site issue removed.");
+    }
+
+    private void EditIssue(SiteIssueDetails issue)
+    {
+        _editingIssueId = issue.Id;
+        _issue.Title = issue.Title;
+        _issue.Description = issue.Description;
+        _issue.ActionTaken = issue.ActionTaken;
+        _issue.Status = issue.Status;
+    }
+
+    private void CancelIssueEdit()
+    {
+        _editingIssueId = null;
+        _issue.Reset();
+    }
+
+    private async Task HandleAsync(
+        DailyReportActionResult result,
+        string message)
+    {
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        _message = message;
+        await LoadAsync();
+    }
+
+    private void ClearFeedback()
+    {
+        _errors.Clear();
+        _message = null;
+    }
+
+    private sealed class ManpowerModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(150)]
+        public string Trade { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.StringLength(200)]
+        public string? Contractor { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Range(1, int.MaxValue)]
+        public int Headcount { get; set; } = 1;
+
+        [System.ComponentModel.DataAnnotations.Range(0, double.MaxValue)]
+        public decimal? ManHours { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(1000)]
+        public string? Remarks { get; set; }
+
+        public void Reset()
+        {
+            Trade = string.Empty;
+            Contractor = null;
+            Headcount = 1;
+            ManHours = null;
+            Remarks = null;
+        }
+    }
+
+    private sealed class EquipmentModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(200)]
+        public string Equipment { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string? Identifier { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Range(1, int.MaxValue)]
+        public int Quantity { get; set; } = 1;
+
+        [System.ComponentModel.DataAnnotations.Range(0, double.MaxValue)]
+        public decimal? HoursUsed { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(1000)]
+        public string? Remarks { get; set; }
+
+        public void Reset()
+        {
+            Equipment = string.Empty;
+            Identifier = null;
+            Quantity = 1;
+            HoursUsed = null;
+            Remarks = null;
+        }
+    }
+
+    private sealed class SiteIssueModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(200)]
+        public string Title { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(2000)]
+        public string Description { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.StringLength(2000)]
+        public string? ActionTaken { get; set; }
+
+        public SiteIssueStatus Status { get; set; } = SiteIssueStatus.Open;
+
+        public void Reset()
+        {
+            Title = string.Empty;
+            Description = string.Empty;
+            ActionTaken = null;
+            Status = SiteIssueStatus.Open;
+        }
+    }
+}

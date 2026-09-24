@@ -15,23 +15,25 @@ Dependencies point inward.
 
 ## Current milestone
 
-**Group 7 — Daily Site Reports**
+**Group 8 — Manpower, Equipment, and Site Issues**
 
-The application now supports:
+Daily site reports now also support:
 
-- one daily report per project/date
-- preparer identity
-- weather and general remarks
-- multiple site activity rows
-- location/activity/status/progress/remarks
-- Draft → Submitted → Approved/Rejected workflow
-- rejected report correction and resubmission
-- reviewer identity and comments
-- search/filter-free project-scoped report history
-- permission-controlled Blazor reporting UI
+- manpower by trade / contractor
+- headcount and optional man-hours
+- equipment usage and quantity
+- optional equipment identifier
+- optional equipment hours used
+- site issues and actions taken
+- Open / Resolved issue state
+- report-level workflow locking for all site resources
+- SQL Server persistence
+- Blazor site-resource management
 - Domain, Application, and integration tests
 
-Manpower, equipment, and site issues remain Group 8. Attachments remain Group 9.
+These records are children of the DailyReport aggregate rather than independent workflows.
+
+Attachments remain Group 9.
 
 ## Build
 
@@ -50,7 +52,9 @@ Apply database migrations explicitly:
 dotnet ef database update --project src/Infrastructure --startup-project src/Web
 ```
 
-See `docs/daily-site-reports.md`.
+See:
+- `docs/daily-site-reports.md`
+- `docs/daily-report-resources.md`
 
 ## Planned development order
 
