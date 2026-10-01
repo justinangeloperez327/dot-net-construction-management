@@ -1,0 +1,14 @@
+**/bin
+**/obj
+.git
+.github
+.vs
+.vscode
+.idea
+App_Data
+TestResults
+artifacts
+*.user
+*.suo
+README.md
+docs

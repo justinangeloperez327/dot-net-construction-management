@@ -20,9 +20,14 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Web.Authentication;
 using Web.Components;
+using Web.Configuration;
 using Web.Security;
 
 var builder = WebApplication.CreateBuilder(args);
+
+DeploymentConfigurationValidator.Validate(
+    builder.Configuration,
+    builder.Environment);
 
 builder.WebHost.ConfigureKestrel(options =>
 {
