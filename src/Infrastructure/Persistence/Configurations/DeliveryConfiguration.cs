@@ -40,7 +40,20 @@ public sealed class DeliveryConfiguration
             delivery.DeliveryNoteNumber
         }).IsUnique();
 
+        builder.HasIndex(delivery => new
+        {
+            delivery.PurchaseOrderId,
+            delivery.Status,
+            delivery.DeliveryDate
+        });
+
         builder.HasIndex(delivery => delivery.ProjectId);
+
+        builder.HasIndex(delivery => new
+        {
+            delivery.Status,
+            delivery.ProjectId
+        });
         builder.HasIndex(delivery => delivery.CreatedByUserId);
         builder.HasIndex(delivery => delivery.ReceivedByUserId);
 

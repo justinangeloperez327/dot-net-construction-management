@@ -46,6 +46,19 @@ public sealed class PaymentApplicationConfiguration
         }).IsUnique();
 
         builder.HasIndex(application => application.ProjectId);
+
+        builder.HasIndex(application => new
+        {
+            application.Status,
+            application.ProjectId
+        });
+
+        builder.HasIndex(application => new
+        {
+            application.ProjectId,
+            application.ApplicationDate,
+            application.ApplicationNumber
+        });
         builder.HasIndex(application => application.CreatedByUserId);
         builder.HasIndex(application => application.ApprovalRequestId);
 

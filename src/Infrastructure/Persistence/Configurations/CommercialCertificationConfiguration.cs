@@ -53,6 +53,12 @@ public sealed class CommercialCertificationConfiguration
             certification.CertificateNumber
         }).IsUnique();
 
+        builder.HasIndex(certification => new
+        {
+            certification.Status,
+            certification.ProjectId
+        });
+
         builder.HasIndex(certification => certification.PaymentApplicationId)
             .IsUnique();
 
