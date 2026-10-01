@@ -1,0 +1,406 @@
+@page "/commercial-certifications/{Id:guid}"
+@attribute [Authorize(Policy = Permissions.CommercialCertifications.View)]
+@inject GetCommercialCertificationHandler CertificationReader
+@inject UpdateCommercialCertificationHandler CertificationUpdater
+@inject AddCommercialDeductionHandler DeductionAdder
+@inject RemoveCommercialDeductionHandler DeductionRemover
+@inject SubmitCommercialCertificationHandler CertificationSubmitter
+@inject CancelCommercialCertificationHandler CertificationCanceller
+@inject ListCommercialCertificationApproversHandler ApproverList
+
+<PageTitle>Commercial certification</PageTitle>
+
+@if (_certification is null)
+{
+    <h1>Commercial certification not found</h1>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <h1>@_certification.CertificateNumber</h1>
+            <p>@_certification.PaymentApplicationNumber · @_certification.SupplierName · @FormatStatus(_certification.Status)</p>
+        </div>
+
+        <div class="page-actions">
+            <a class="button-link"
+               href="@($"/payment-applications/{_certification.PaymentApplicationId}")">
+                Payment application
+            </a>
+
+            @if (_certification.ApprovalRequestId is Guid approvalId)
+            {
+                <a class="button-link"
+                   href="@($"/approvals/{approvalId}")">
+                    Approval
+                </a>
+            }
+
+            <a href="@($"/projects/{_certification.ProjectId}/commercial-certifications")">
+                Back to certifications
+            </a>
+        </div>
+    </div>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_message))
+    {
+        <p class="success-message">@_message</p>
+    }
+
+    <dl class="details-grid">
+        <dt>Status</dt>
+        <dd>@FormatStatus(_certification.Status)</dd>
+        <dt>Claimed amount</dt>
+        <dd>@_certification.Currency @_certification.ClaimedAmount.ToString("N2")</dd>
+        <dt>Uncertified amount</dt>
+        <dd>@_certification.Currency @_certification.UncertifiedAmount.ToString("N2")</dd>
+        <dt>Certified amount</dt>
+        <dd>@_certification.Currency @_certification.CertifiedAmount.ToString("N2")</dd>
+        <dt>Retention</dt>
+        <dd>@_certification.RetentionPercent.ToString("N2")% · @_certification.Currency @_certification.RetentionAmount.ToString("N2")</dd>
+        <dt>Advance recovery</dt>
+        <dd>@_certification.Currency @_certification.AdvancePaymentRecoveryAmount.ToString("N2")</dd>
+        <dt>Other deductions</dt>
+        <dd>@_certification.Currency @_certification.OtherDeductionAmount.ToString("N2")</dd>
+        <dt>Total deductions</dt>
+        <dd>@_certification.Currency @_certification.TotalDeductions.ToString("N2")</dd>
+        <dt>Payable amount</dt>
+        <dd><strong>@_certification.Currency @_certification.PayableAmount.ToString("N2")</strong></dd>
+        <dt>Created by</dt>
+        <dd>@_certification.CreatedBy</dd>
+        <dt>Notes</dt>
+        <dd>@(_certification.Notes ?? "—")</dd>
+    </dl>
+
+    @if (IsEditable)
+    {
+        <AuthorizeView Policy="@Permissions.CommercialCertifications.Update">
+            <Authorized Context="authorizationState">
+                <section class="form-section">
+                    <h2>Edit certification</h2>
+                    <EditForm Model="_header"
+                              OnValidSubmit="SaveHeaderAsync"
+                              class="form-grid"
+                              Context="certificationHeaderContext">
+                        <DataAnnotationsValidator />
+
+                        <label>Certificate number</label>
+                        <InputText @bind-Value="_header.CertificateNumber" />
+
+                        <label>Certificate date</label>
+                        <InputDate @bind-Value="_header.CertificateDate" />
+
+                        <label>Certified amount</label>
+                        <InputNumber @bind-Value="_header.CertifiedAmount" />
+
+                        <label>Retention %</label>
+                        <InputNumber @bind-Value="_header.RetentionPercent" />
+
+                        <label>Advance payment recovery</label>
+                        <InputNumber @bind-Value="_header.AdvancePaymentRecoveryAmount" />
+
+                        <label>Notes</label>
+                        <InputTextArea @bind-Value="_header.Notes" />
+
+                        <button type="submit">Save certification</button>
+                    </EditForm>
+                </section>
+
+                <section class="form-section">
+                    <h2>Other deductions</h2>
+
+                    @if (_certification.OtherDeductions.Count > 0)
+                    {
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Description</th>
+                                    <th>Amount</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var deduction in _certification.OtherDeductions)
+                                {
+                                    <tr>
+                                        <td>@deduction.Description</td>
+                                        <td>@_certification.Currency @deduction.Amount.ToString("N2")</td>
+                                        <td>
+                                            <button type="button"
+                                                    class="danger-button"
+                                                    @onclick="() => RemoveDeductionAsync(deduction.Id)">
+                                                Remove
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+
+                    <EditForm Model="_deduction"
+                              OnValidSubmit="AddDeductionAsync"
+                              class="form-grid"
+                              Context="deductionContext">
+                        <DataAnnotationsValidator />
+
+                        <label>Deduction reason</label>
+                        <InputText @bind-Value="_deduction.Description" />
+
+                        <label>Amount</label>
+                        <InputNumber @bind-Value="_deduction.Amount" />
+
+                        <button type="submit">Add deduction</button>
+                    </EditForm>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+
+    @if (IsEditable && _certification.CertifiedAmount > 0)
+    {
+        <AuthorizeView Policy="@Permissions.CommercialCertifications.Submit">
+            <Authorized>
+                <section class="form-section">
+                    <h2>Submit commercial approval</h2>
+
+                    @for (var index = 0; index < _approvalSteps.Count; index++)
+                    {
+                        var stepIndex = index;
+                        <div class="form-grid">
+                            <label>Step @(stepIndex + 1)</label>
+                            <input maxlength="150"
+                                   @bind="_approvalSteps[stepIndex].Name" />
+
+                            <label>Approver</label>
+                            <select @bind="_approvalSteps[stepIndex].ApproverUserId">
+                                <option value="@Guid.Empty">Select approver</option>
+                                @foreach (var approver in _approvers)
+                                {
+                                    <option value="@approver.Id">@approver.Email</option>
+                                }
+                            </select>
+                        </div>
+                    }
+
+                    <div class="page-actions">
+                        <button type="button" @onclick="AddApprovalStep">
+                            Add approval step
+                        </button>
+                        <button type="button" @onclick="SubmitAsync">
+                            Submit certification
+                        </button>
+                    </div>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+
+    @if (IsEditable)
+    {
+        <AuthorizeView Policy="@Permissions.CommercialCertifications.Cancel">
+            <Authorized>
+                <section class="danger-zone">
+                    <h2>Cancel certification</h2>
+                    <button type="button"
+                            class="danger-button"
+                            @onclick="CancelAsync">
+                        Cancel certification
+                    </button>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Application.Commercial.CommercialCertificationDetails? _certification;
+    private IReadOnlyList<UserDirectoryEntry> _approvers = [];
+    private readonly CertificationFormModel _header = new();
+    private readonly DeductionFormModel _deduction = new();
+    private readonly List<ApprovalStepFormModel> _approvalSteps = [new()];
+    private readonly List<string> _errors = [];
+    private string? _message;
+
+    private bool IsEditable =>
+        _certification?.Status is CommercialCertificationStatus.Draft
+            or CommercialCertificationStatus.Rejected;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _approvers = await ApproverList.HandleAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _certification = await CertificationReader.HandleAsync(Id);
+
+        if (_certification is null)
+        {
+            return;
+        }
+
+        _header.CertificateNumber = _certification.CertificateNumber;
+        _header.CertificateDate = _certification.CertificateDate;
+        _header.CertifiedAmount = _certification.CertifiedAmount;
+        _header.RetentionPercent = _certification.RetentionPercent;
+        _header.AdvancePaymentRecoveryAmount =
+            _certification.AdvancePaymentRecoveryAmount;
+        _header.Notes = _certification.Notes;
+    }
+
+    private async Task SaveHeaderAsync()
+    {
+        ClearFeedback();
+
+        var result = await CertificationUpdater.HandleAsync(
+            Id,
+            new UpdateCommercialCertificationCommand(
+                _header.CertificateNumber,
+                _header.CertificateDate,
+                _header.CertifiedAmount,
+                _header.RetentionPercent,
+                _header.AdvancePaymentRecoveryAmount,
+                _header.Notes));
+
+        await HandleAsync(result, "Certification updated.");
+    }
+
+    private async Task AddDeductionAsync()
+    {
+        ClearFeedback();
+
+        var result = await DeductionAdder.HandleAsync(
+            Id,
+            new CommercialDeductionCommand(
+                _deduction.Description,
+                _deduction.Amount));
+
+        if (result.Succeeded)
+        {
+            _deduction.Description = string.Empty;
+            _deduction.Amount = 0;
+        }
+
+        await HandleAsync(result, "Deduction added.");
+    }
+
+    private async Task RemoveDeductionAsync(Guid deductionId)
+    {
+        ClearFeedback();
+
+        var result = await DeductionRemover.HandleAsync(
+            Id,
+            deductionId);
+
+        await HandleAsync(result, "Deduction removed.");
+    }
+
+    private async Task SubmitAsync()
+    {
+        ClearFeedback();
+
+        if (_approvalSteps.Any(step =>
+                string.IsNullOrWhiteSpace(step.Name) ||
+                step.ApproverUserId == Guid.Empty))
+        {
+            _errors.Add(
+                "Every approval step requires a name and approver.");
+            return;
+        }
+
+        var result = await CertificationSubmitter.HandleAsync(
+            Id,
+            new SubmitCommercialCertificationCommand(
+                _approvalSteps
+                    .Select(step => new ApprovalStepInput(
+                        step.Name,
+                        step.ApproverUserId))
+                    .ToArray()));
+
+        await HandleAsync(
+            result,
+            "Commercial certification submitted for approval.");
+    }
+
+    private async Task CancelAsync()
+    {
+        ClearFeedback();
+
+        var result = await CertificationCanceller.HandleAsync(Id);
+
+        await HandleAsync(result, "Certification cancelled.");
+    }
+
+    private async Task HandleAsync(
+        CommercialCertificationActionResult result,
+        string message)
+    {
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        _message = message;
+        await LoadAsync();
+    }
+
+    private void AddApprovalStep() =>
+        _approvalSteps.Add(new ApprovalStepFormModel());
+
+    private void ClearFeedback()
+    {
+        _errors.Clear();
+        _message = null;
+    }
+
+    private static string FormatStatus(
+        CommercialCertificationStatus status) =>
+        status == CommercialCertificationStatus.PendingApproval
+            ? "Pending approval"
+            : status.ToString();
+
+    private sealed class CertificationFormModel
+    {
+        public string CertificateNumber { get; set; } = string.Empty;
+        public DateOnly CertificateDate { get; set; }
+        public decimal CertifiedAmount { get; set; }
+        public decimal RetentionPercent { get; set; }
+        public decimal AdvancePaymentRecoveryAmount { get; set; }
+        public string? Notes { get; set; }
+    }
+
+    private sealed class DeductionFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(500)]
+        public string Description { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Range(
+            typeof(decimal),
+            "0",
+            "9999999999999999.99")]
+        public decimal Amount { get; set; }
+    }
+
+    private sealed class ApprovalStepFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public Guid ApproverUserId { get; set; }
+    }
+}

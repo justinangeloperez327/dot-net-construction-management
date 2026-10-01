@@ -94,6 +94,23 @@ public sealed class PaymentApplicationRepository(
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<PaymentApplication>> ListByIdsAsync(
+        IReadOnlyCollection<Guid> paymentApplicationIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (paymentApplicationIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await dbContext.PaymentApplications
+            .AsNoTracking()
+            .Include(application => application.Items)
+            .Where(application =>
+                paymentApplicationIds.Contains(application.Id))
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<int> CountForProjectAsync(
         Guid projectId,
         PaymentApplicationStatus? status,

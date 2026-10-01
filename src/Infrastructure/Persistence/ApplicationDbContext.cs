@@ -1,5 +1,6 @@
 using Domain.Approvals;
 using Domain.Clients;
+using Domain.Commercial;
 using Domain.DailyReports;
 using Domain.Deliveries;
 using Domain.Documents;
@@ -78,6 +79,12 @@ public sealed class ApplicationDbContext(
 
     public DbSet<PaymentApplicationItem> PaymentApplicationItems =>
         Set<PaymentApplicationItem>();
+
+    public DbSet<CommercialCertification> CommercialCertifications =>
+        Set<CommercialCertification>();
+
+    public DbSet<CommercialDeduction> CommercialDeductions =>
+        Set<CommercialDeduction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

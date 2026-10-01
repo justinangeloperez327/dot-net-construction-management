@@ -4,36 +4,35 @@ A deployable construction project management application built with .NET 10 and 
 
 ## Current milestone
 
-Group 17 — Payment Applications
+Group 18 — Commercial Approvals
 
-The application now supports supplier payment applications against approved Purchase Orders and physically received quantities.
+The application now supports formal commercial certification of approved Payment Applications.
 
-Payment Applications include:
+Commercial Certification includes:
 
-- PO-scoped application number
-- application date
-- optional claim period
-- notes
-- creator and creation timestamp
+- one certificate per approved Payment Application
+- project-scoped certificate number
+- claimed amount snapshot
+- commercial certified amount
+- uncertified amount
+- retention percentage and derived retention amount
+- advance-payment recovery
+- reasoned other deductions
+- total deductions
+- derived payable amount
 - Draft / Pending Approval / Approved / Rejected / Cancelled lifecycle
-- claim lines tied to PO items
-- received quantity visibility
-- prior committed claim visibility
-- remaining claimable quantity
-- PO unit price, discount, and tax terms
-- derived claimed amount
-- reusable approval workflow
-- project payment-application register
-- approved-PO creation workflow
+- reusable approval-engine integration
+- project certification register
+- certification workflow from approved Payment Applications
 - SQL Server persistence
 
-The central control is:
+The core formula is:
 
-received quantity - quantities in Pending Approval / Approved applications = claimable quantity
+Payable Amount = Certified Amount - Retention - Advance Recovery - Other Deductions
 
-Draft and Rejected applications do not reserve claim quantity.
+Certified Amount cannot exceed the supplier's approved claim, and total deductions cannot exceed the certified amount.
 
-Payment applications remain available during project close-out because commercial settlement can continue after operational project closure.
+See docs/commercial-certifications.md.
 
 ## Build
 
@@ -43,10 +42,6 @@ dotnet tool restore
 dotnet restore CPM.slnx
 dotnet build CPM.slnx --configuration Release --no-restore
 dotnet test CPM.slnx --configuration Release --no-build
-
-Apply database migrations explicitly with dotnet ef database update using Infrastructure as the migration project and Web as the startup project.
-
-See docs/payment-applications.md.
 
 ## Planned development order
 

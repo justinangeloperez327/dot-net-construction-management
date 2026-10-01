@@ -1,5 +1,6 @@
 using Application.Approvals;
 using Application.Clients;
+using Application.Commercial;
 using Application.DailyReports;
 using Application.Deliveries;
 using Application.Documents;
@@ -137,6 +138,20 @@ public static class DependencyInjection
         services.AddScoped<
             IApprovalSubjectOutcomeHandler,
             PaymentApplicationApprovalOutcomeHandler>();
+
+        services.AddScoped<CreateCommercialCertificationHandler>();
+        services.AddScoped<UpdateCommercialCertificationHandler>();
+        services.AddScoped<AddCommercialDeductionHandler>();
+        services.AddScoped<UpdateCommercialDeductionHandler>();
+        services.AddScoped<RemoveCommercialDeductionHandler>();
+        services.AddScoped<SubmitCommercialCertificationHandler>();
+        services.AddScoped<CancelCommercialCertificationHandler>();
+        services.AddScoped<GetCommercialCertificationHandler>();
+        services.AddScoped<ListCommercialCertificationsHandler>();
+        services.AddScoped<ListCommercialCertificationApproversHandler>();
+        services.AddScoped<
+            IApprovalSubjectOutcomeHandler,
+            CommercialCertificationApprovalOutcomeHandler>();
 
         return services;
     }

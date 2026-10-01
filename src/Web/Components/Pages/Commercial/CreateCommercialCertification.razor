@@ -1,0 +1,160 @@
+@page "/payment-applications/{PaymentApplicationId:guid}/commercial-certifications/create"
+@attribute [Authorize(Policy = Permissions.CommercialCertifications.Create)]
+@inject GetPaymentApplicationHandler PaymentApplicationReader
+@inject CreateCommercialCertificationHandler CertificationCreator
+@inject NavigationManager Navigation
+
+<PageTitle>Create commercial certification</PageTitle>
+
+@if (_application is null)
+{
+    <h1>Payment application not found</h1>
+}
+else if (_application.Status != PaymentApplicationStatus.Approved)
+{
+    <h1>Create commercial certification</h1>
+    <p>Only approved payment applications can be commercially certified.</p>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <h1>Create commercial certification</h1>
+            <p>@_application.ApplicationNumber · @_application.SupplierName</p>
+        </div>
+
+        <a href="@($"/payment-applications/{PaymentApplicationId}")">
+            Back to payment application
+        </a>
+    </div>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    <dl class="details-grid">
+        <dt>Claimed amount</dt>
+        <dd>@_application.Currency @_application.ClaimedAmount.ToString("N2")</dd>
+    </dl>
+
+    <EditForm Model="_model"
+              OnValidSubmit="CreateAsync"
+              class="form-grid">
+        <DataAnnotationsValidator />
+
+        <label for="certificate-number">Certificate number</label>
+        <InputText id="certificate-number"
+                   @bind-Value="_model.CertificateNumber" />
+        <ValidationMessage For="() => _model.CertificateNumber" />
+
+        <label for="certificate-date">Certificate date</label>
+        <InputDate id="certificate-date"
+                   @bind-Value="_model.CertificateDate" />
+
+        <label for="certified-amount">Certified amount</label>
+        <InputNumber id="certified-amount"
+                     @bind-Value="_model.CertifiedAmount" />
+
+        <label for="retention-percent">Retention %</label>
+        <InputNumber id="retention-percent"
+                     @bind-Value="_model.RetentionPercent" />
+
+        <label for="advance-recovery">Advance payment recovery</label>
+        <InputNumber id="advance-recovery"
+                     @bind-Value="_model.AdvancePaymentRecoveryAmount" />
+
+        <label for="notes">Notes</label>
+        <InputTextArea id="notes"
+                       @bind-Value="_model.Notes" />
+
+        <button type="submit">Create certification</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public Guid PaymentApplicationId { get; set; }
+
+    private Application.PaymentApplications.PaymentApplicationDetails? _application;
+    private readonly CertificationFormModel _model = new();
+    private readonly List<string> _errors = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _application = await PaymentApplicationReader.HandleAsync(
+            PaymentApplicationId);
+
+        if (_application is not null)
+        {
+            _model.CertificateDate = DateOnly.FromDateTime(DateTime.Today);
+
+            if (_model.CertificateDate < _application.ApplicationDate)
+            {
+                _model.CertificateDate = _application.ApplicationDate;
+            }
+
+            _model.CertifiedAmount = _application.ClaimedAmount;
+        }
+    }
+
+    private async Task CreateAsync()
+    {
+        _errors.Clear();
+
+        var result = await CertificationCreator.HandleAsync(
+            new CreateCommercialCertificationCommand(
+                PaymentApplicationId,
+                _model.CertificateNumber,
+                _model.CertificateDate,
+                _model.CertifiedAmount,
+                _model.RetentionPercent,
+                _model.AdvancePaymentRecoveryAmount,
+                _model.Notes));
+
+        if (result.Succeeded &&
+            result.CertificationId is Guid certificationId)
+        {
+            Navigation.NavigateTo(
+                $"/commercial-certifications/{certificationId}");
+            return;
+        }
+
+        _errors.AddRange(result.Errors);
+    }
+
+    private sealed class CertificationFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string CertificateNumber { get; set; } = string.Empty;
+
+        public DateOnly CertificateDate { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Range(
+            typeof(decimal),
+            "0",
+            "9999999999999999.99")]
+        public decimal CertifiedAmount { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Range(
+            typeof(decimal),
+            "0",
+            "100")]
+        public decimal RetentionPercent { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Range(
+            typeof(decimal),
+            "0",
+            "9999999999999999.99")]
+        public decimal AdvancePaymentRecoveryAmount { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(2000)]
+        public string? Notes { get; set; }
+    }
+}
