@@ -51,6 +51,13 @@ public sealed class AuditSaveChangesInterceptor(
 
         EnsureAppendOnly(context);
 
+        context.ChangeTracker.DetectChanges();
+
+        if (!context.ChangeTracker.Entries().Any(IsAuditable))
+        {
+            return result;
+        }
+
         var actor = await currentUser.GetAsync(cancellationToken);
 
         AppendAuditLogs(

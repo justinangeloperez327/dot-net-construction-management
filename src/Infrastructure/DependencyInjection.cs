@@ -12,6 +12,7 @@ using Application.Documents;
 using Application.PaymentApplications;
 using Application.Projects;
 using Application.Reporting;
+using Application.Security;
 using Application.PurchaseOrders;
 using Application.PurchaseRequests;
 using Application.Roles;
@@ -20,6 +21,7 @@ using Application.Users;
 using Infrastructure.Files;
 using Infrastructure.Identity;
 using Infrastructure.Persistence;
+using Infrastructure.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -60,14 +62,14 @@ public static class DependencyInjection
             {
                 options.User.RequireUniqueEmail = true;
 
-                options.Password.RequiredLength = 10;
+                options.Password.RequiredLength = 12;
                 options.Password.RequireDigit = true;
                 options.Password.RequireLowercase = true;
                 options.Password.RequireUppercase = true;
                 options.Password.RequireNonAlphanumeric = true;
 
                 options.Lockout.MaxFailedAccessAttempts = 5;
-                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(30);
                 options.Lockout.AllowedForNewUsers = true;
             })
             .AddRoles<IdentityRole<Guid>>()
@@ -87,10 +89,19 @@ public static class DependencyInjection
         {
             options.LoginPath = "/login";
             options.AccessDeniedPath = "/access-denied";
+            options.Cookie.Name = "__Host-ConstructionManagement.Auth";
             options.Cookie.HttpOnly = true;
+            options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
             options.Cookie.SameSite = SameSiteMode.Lax;
-            options.SlidingExpiration = true;
+            options.Cookie.Path = "/";
+            options.Cookie.IsEssential = true;
+            options.SlidingExpiration = false;
             options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        });
+
+        services.Configure<SecurityStampValidatorOptions>(options =>
+        {
+            options.ValidationInterval = TimeSpan.FromMinutes(4);
         });
 
         services.AddAuthorization(options =>
@@ -127,6 +138,8 @@ public static class DependencyInjection
         services.AddScoped<IDashboardQueryService, DashboardQueryService>();
         services.AddScoped<IReportingQueryService, ReportingQueryService>();
         services.AddScoped<IAuditTrailQueryService, AuditTrailQueryService>();
+        services.AddScoped<ISecurityEventRecorder, SecurityEventStore>();
+        services.AddScoped<ISecurityEventQueryService, SecurityEventStore>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 
         var storageRoot = configuration["FileStorage:RootPath"];

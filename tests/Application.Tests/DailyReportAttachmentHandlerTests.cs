@@ -22,7 +22,7 @@ public sealed class DailyReportAttachmentHandlerTests
             new FakeCurrentUser(userId),
             TimeProvider.System);
 
-        await using var content = new MemoryStream([1, 2, 3, 4]);
+        await using var content = new MemoryStream([0xFF, 0xD8, 0xFF, 0xE0, 1, 2]);
 
         var result = await handler.HandleAsync(
             report.Id,
@@ -59,6 +59,35 @@ public sealed class DailyReportAttachmentHandlerTests
             new UploadDailyReportAttachmentRequest(
                 "script.svg",
                 "image/svg+xml",
+                content.Length,
+                null,
+                content));
+
+        Assert.False(result.Succeeded);
+        Assert.Empty(storage.Files);
+        Assert.Empty(report.Attachments);
+    }
+
+    [Fact]
+    public async Task Upload_rejects_mismatched_file_signature()
+    {
+        var report = CreateReport();
+        var storage = new FakeFileStorage();
+
+        var handler = new UploadDailyReportAttachmentHandler(
+            new FakeRepository(report),
+            storage,
+            new FakeCurrentUser(Guid.NewGuid()),
+            TimeProvider.System);
+
+        await using var content = new MemoryStream(
+            [0x25, 0x50, 0x44, 0x46, 0x2D]);
+
+        var result = await handler.HandleAsync(
+            report.Id,
+            new UploadDailyReportAttachmentRequest(
+                "site.jpg",
+                "image/jpeg",
                 content.Length,
                 null,
                 content));

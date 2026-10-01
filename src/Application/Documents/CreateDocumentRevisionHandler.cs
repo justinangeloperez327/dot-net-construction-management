@@ -68,6 +68,18 @@ public sealed class CreateDocumentRevisionHandler(
                 "An authenticated user is required.");
         }
 
+        var signatureValidation =
+            await FileSignatureValidator.ValidateAsync(
+                request.Content,
+                request.ContentType,
+                cancellationToken);
+
+        if (!signatureValidation.Succeeded)
+        {
+            return DocumentActionResult.Failure(
+                signatureValidation.Error!);
+        }
+
         var revisionId = Guid.NewGuid();
         var safeFileName = Path.GetFileName(request.FileName.Trim());
         var extension = FileUploadPolicy.GetNormalizedExtension(
@@ -79,7 +91,7 @@ public sealed class CreateDocumentRevisionHandler(
         {
             await fileStorage.WriteAsync(
                 storageKey,
-                request.Content,
+                signatureValidation.Content,
                 cancellationToken);
         }
         catch (Exception exception)

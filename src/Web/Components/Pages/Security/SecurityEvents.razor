@@ -1,0 +1,212 @@
+@page "/security-events"
+@attribute [Authorize(Policy = Permissions.Security.ViewEvents)]
+@inject ListSecurityEventsHandler SecurityEvents
+
+<PageTitle>Security events</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <h1>Security events</h1>
+        <p>Authentication and request-protection events.</p>
+    </div>
+</div>
+
+<section class="audit-filter-panel">
+    <div class="audit-filter-grid">
+        <div>
+            <label for="security-event-type">Event</label>
+            <select id="security-event-type" @bind="_eventType">
+                <option value="">All events</option>
+                @foreach (var eventType in Enum.GetValues<SecurityEventType>())
+                {
+                    <option value="@eventType">@FormatEvent(eventType)</option>
+                }
+            </select>
+        </div>
+
+        <div>
+            <label for="security-email">Email</label>
+            <input id="security-email"
+                   placeholder="Email contains..."
+                   @bind="_email" />
+        </div>
+
+        <div>
+            <label for="security-from">From date</label>
+            <InputDate id="security-from" @bind-Value="_fromDate" />
+        </div>
+
+        <div>
+            <label for="security-to">To date</label>
+            <InputDate id="security-to" @bind-Value="_toDate" />
+        </div>
+    </div>
+
+    <div class="page-actions">
+        <button type="button" @onclick="ApplyFiltersAsync">
+            Apply filters
+        </button>
+        <button type="button"
+                class="secondary-button"
+                @onclick="ClearFiltersAsync">
+            Clear
+        </button>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <p class="validation-error">@_error</p>
+    }
+</section>
+
+@if (_result is null)
+{
+    <p>Loading security events...</p>
+}
+else if (_result.Items.Count == 0)
+{
+    <div class="empty-state">
+        <p>No security events match the current filters.</p>
+    </div>
+}
+else
+{
+    <div class="audit-list">
+        @foreach (var item in _result.Items)
+        {
+            <article class="audit-event">
+                <div class="audit-event-heading">
+                    <div>
+                        <span class="status-chip">@FormatEvent(item.EventType)</span>
+                        <strong>@(item.Email ?? "Unknown account")</strong>
+                    </div>
+                    <time datetime="@item.OccurredAt.ToString("O")">
+                        @item.OccurredAt.ToLocalTime().ToString("dd MMM yyyy HH:mm:ss")
+                    </time>
+                </div>
+
+                <div class="security-event-details">
+                    <span><strong>IP:</strong> @(item.RemoteIpAddress ?? "—")</span>
+                    <span><strong>Path:</strong> @(item.RequestPath ?? "—")</span>
+                    <span><strong>User agent:</strong> @(item.UserAgent ?? "—")</span>
+                </div>
+            </article>
+        }
+    </div>
+
+    <div class="pagination">
+        <button type="button"
+                disabled="@(_result.Page <= 1)"
+                @onclick="PreviousPageAsync">
+            Previous
+        </button>
+        <span>
+            Page @_result.Page of @_result.TotalPages
+            · @_result.TotalCount total
+        </span>
+        <button type="button"
+                disabled="@(_result.Page >= _result.TotalPages)"
+                @onclick="NextPageAsync">
+            Next
+        </button>
+    </div>
+}
+
+@code {
+    private SecurityEventResult? _result;
+    private string _eventType = string.Empty;
+    private string _email = string.Empty;
+    private DateOnly? _fromDate;
+    private DateOnly? _toDate;
+    private string? _error;
+    private int _page = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task ApplyFiltersAsync()
+    {
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task ClearFiltersAsync()
+    {
+        _eventType = string.Empty;
+        _email = string.Empty;
+        _fromDate = null;
+        _toDate = null;
+        _error = null;
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        _page = Math.Max(1, _page - 1);
+        await LoadAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (_result is null)
+        {
+            return;
+        }
+
+        _page = Math.Min(_result.TotalPages, _page + 1);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+
+        if (_fromDate is not null &&
+            _toDate is not null &&
+            _toDate < _fromDate)
+        {
+            _error =
+                "The end date cannot be before the start date.";
+            return;
+        }
+
+        SecurityEventType? eventType =
+            Enum.TryParse<SecurityEventType>(
+                _eventType,
+                ignoreCase: true,
+                out var parsed)
+                ? parsed
+                : null;
+
+        _result = await SecurityEvents.HandleAsync(
+            new SecurityEventQuery(
+                eventType,
+                string.IsNullOrWhiteSpace(_email) ? null : _email,
+                _fromDate,
+                _toDate,
+                _page));
+    }
+
+    private static string FormatEvent(SecurityEventType eventType)
+    {
+        var value = eventType.ToString();
+        var result = new System.Text.StringBuilder();
+
+        for (var index = 0; index < value.Length; index++)
+        {
+            if (index > 0 &&
+                char.IsUpper(value[index]) &&
+                !char.IsUpper(value[index - 1]))
+            {
+                result.Append(' ');
+            }
+
+            result.Append(value[index]);
+        }
+
+        return result.ToString();
+    }
+}
