@@ -1,0 +1,193 @@
+@page "/purchase-requests/{PurchaseRequestId:guid}/purchase-orders/create"
+@attribute [Authorize(Policy = Permissions.PurchaseOrders.Create)]
+@inject GetPurchaseRequestHandler PurchaseRequestReader
+@inject GetProjectHandler ProjectReader
+@inject ListActiveSuppliersHandler SupplierList
+@inject CreatePurchaseOrderHandler PurchaseOrderCreator
+@inject NavigationManager Navigation
+
+<PageTitle>Create purchase order</PageTitle>
+
+@if (_purchaseRequest is null)
+{
+    <h1>Purchase request not found</h1>
+}
+else if (_purchaseRequest.Status != PurchaseRequestStatus.Approved)
+{
+    <h1>Create purchase order</h1>
+    <p>Only approved purchase requests can be converted to a purchase order.</p>
+}
+else if (_project?.Status == ProjectStatus.Closed)
+{
+    <h1>Create purchase order</h1>
+    <p>Purchase orders cannot be created for a closed project.</p>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <h1>Create purchase order</h1>
+            <p>
+                Source PR @_purchaseRequest.RequestNumber · @_purchaseRequest.Title
+            </p>
+        </div>
+
+        <a href="@($"/purchase-requests/{PurchaseRequestId}")">
+            Back to purchase request
+        </a>
+    </div>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    <EditForm Model="_model"
+              OnValidSubmit="CreateAsync"
+              class="form-grid">
+        <DataAnnotationsValidator />
+
+        <label for="po-number">PO number</label>
+        <InputText id="po-number"
+                   @bind-Value="_model.PurchaseOrderNumber" />
+        <ValidationMessage For="() => _model.PurchaseOrderNumber" />
+
+        <label for="supplier">Supplier</label>
+        <InputSelect id="supplier"
+                     @bind-Value="_model.SupplierId">
+            <option value="@Guid.Empty">Select supplier</option>
+            @foreach (var supplier in _suppliers)
+            {
+                <option value="@supplier.Id">
+                    @supplier.SupplierCode · @supplier.Name
+                </option>
+            }
+        </InputSelect>
+
+        <label for="order-date">Order date</label>
+        <InputDate id="order-date"
+                   @bind-Value="_model.OrderDate" />
+
+        <label for="delivery-date">Expected delivery</label>
+        <InputDate id="delivery-date"
+                   @bind-Value="_model.ExpectedDeliveryDate" />
+
+        <label for="currency">Currency</label>
+        <InputText id="currency"
+                   @bind-Value="_model.Currency" />
+        <ValidationMessage For="() => _model.Currency" />
+
+        <label for="delivery-address">Delivery address</label>
+        <InputTextArea id="delivery-address"
+                       @bind-Value="_model.DeliveryAddress" />
+
+        <label for="delivery-terms">Delivery terms</label>
+        <InputTextArea id="delivery-terms"
+                       @bind-Value="_model.DeliveryTerms" />
+
+        <label for="payment-terms">Payment terms</label>
+        <InputTextArea id="payment-terms"
+                       @bind-Value="_model.PaymentTerms" />
+
+        <label for="notes">Notes</label>
+        <InputTextArea id="notes"
+                       @bind-Value="_model.Notes" />
+
+        <button type="submit">Create draft PO</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public Guid PurchaseRequestId { get; set; }
+
+    private Application.PurchaseRequests.PurchaseRequestDetails? _purchaseRequest;
+    private Application.Projects.ProjectDetails? _project;
+    private IReadOnlyList<SupplierOption> _suppliers = [];
+    private readonly PurchaseOrderFormModel _model = new();
+    private readonly List<string> _errors = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _purchaseRequest = await PurchaseRequestReader.HandleAsync(
+            PurchaseRequestId);
+
+        _project = _purchaseRequest is null
+            ? null
+            : await ProjectReader.HandleAsync(
+                _purchaseRequest.ProjectId);
+
+        _suppliers = await SupplierList.HandleAsync();
+    }
+
+    private async Task CreateAsync()
+    {
+        _errors.Clear();
+
+        if (_model.SupplierId == Guid.Empty)
+        {
+            _errors.Add("Supplier is required.");
+            return;
+        }
+
+        var result = await PurchaseOrderCreator.HandleAsync(
+            new CreatePurchaseOrderCommand(
+                PurchaseRequestId,
+                _model.SupplierId,
+                _model.PurchaseOrderNumber,
+                _model.OrderDate,
+                _model.ExpectedDeliveryDate,
+                _model.Currency,
+                _model.DeliveryAddress,
+                _model.DeliveryTerms,
+                _model.PaymentTerms,
+                _model.Notes));
+
+        if (result.Succeeded &&
+            result.PurchaseOrderId is Guid purchaseOrderId)
+        {
+            Navigation.NavigateTo(
+                $"/purchase-orders/{purchaseOrderId}");
+            return;
+        }
+
+        _errors.AddRange(result.Errors);
+    }
+
+    private sealed class PurchaseOrderFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string PurchaseOrderNumber { get; set; } = string.Empty;
+
+        public Guid SupplierId { get; set; }
+
+        public DateOnly OrderDate { get; set; } =
+            DateOnly.FromDateTime(DateTime.Today);
+
+        public DateOnly? ExpectedDeliveryDate { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(
+            3,
+            MinimumLength = 3)]
+        public string Currency { get; set; } = "AED";
+
+        [System.ComponentModel.DataAnnotations.StringLength(1000)]
+        public string? DeliveryAddress { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(1000)]
+        public string? DeliveryTerms { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(1000)]
+        public string? PaymentTerms { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(2000)]
+        public string? Notes { get; set; }
+    }
+}

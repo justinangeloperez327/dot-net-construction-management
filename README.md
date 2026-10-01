@@ -4,28 +4,35 @@ A deployable construction project management application built with .NET 10 and 
 
 ## Current milestone
 
-Group 14 — Purchase Requests
+Group 15 — Purchase Orders
 
-The application now supports project-scoped Purchase Requests with:
+The application now supports commercial Purchase Orders created from approved Purchase Requests.
 
-- project-scoped PR numbering
-- title and purpose / justification
-- optional required-by date
-- requested-by identity and creation timestamp
-- line items with description, quantity, unit, and remarks
+Purchase Orders include:
+
+- company-wide unique PO number
+- approved source Purchase Request
+- active Supplier
+- order and expected-delivery dates
+- three-letter currency code
+- delivery address and delivery terms
+- payment terms
+- notes
+- source-linked PO lines
+- quantities
+- unit prices
+- line discounts
+- line taxes
+- derived commercial totals
 - Draft / Pending Approval / Approved / Rejected / Cancelled lifecycle
-- edit and resubmit after rejection
-- ordered approval-chain selection
-- Group 12 approval-engine integration
-- automatic approval outcome synchronization
+- reusable Group 12 approval integration
+- split-award quantity controls
 - project closure protection
-- pagination and status filtering
+- project PO register and detail workflow
 - SQL Server persistence
-- Blazor create/register/detail workflow
+- Domain and integration tests
 
-Purchase Requests intentionally do not select suppliers or establish final prices. They define what the project needs. Supplier selection and committed commercial terms belong to later procurement stages.
-
-Group 14 also introduces a narrow IUnitOfWork because submission is the first workflow that must atomically persist changes across PurchaseRequest and ApprovalRequest.
+A source PR may create more than one PO. At submission, quantities already present in Pending Approval or Approved POs are counted so combined supplier awards cannot exceed the approved PR line quantity.
 
 ## Build
 
@@ -38,7 +45,7 @@ dotnet test CPM.slnx --configuration Release --no-build
 
 Apply database migrations explicitly with dotnet ef database update using Infrastructure as the migration project and Web as the startup project.
 
-See docs/purchase-requests.md.
+See docs/purchase-orders.md.
 
 ## Planned development order
 

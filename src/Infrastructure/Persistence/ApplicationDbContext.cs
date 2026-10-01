@@ -3,6 +3,7 @@ using Domain.Clients;
 using Domain.DailyReports;
 using Domain.Documents;
 using Domain.Projects;
+using Domain.PurchaseOrders;
 using Domain.PurchaseRequests;
 using Domain.Suppliers;
 using Infrastructure.Identity;
@@ -57,6 +58,12 @@ public sealed class ApplicationDbContext(
 
     public DbSet<PurchaseRequestItem> PurchaseRequestItems =>
         Set<PurchaseRequestItem>();
+
+    public DbSet<PurchaseOrder> PurchaseOrders =>
+        Set<PurchaseOrder>();
+
+    public DbSet<PurchaseOrderItem> PurchaseOrderItems =>
+        Set<PurchaseOrderItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

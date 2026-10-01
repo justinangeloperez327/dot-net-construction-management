@@ -61,6 +61,21 @@ public sealed class SupplierRepository(
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Supplier>> ListByIdsAsync(
+        IReadOnlyCollection<Guid> supplierIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (supplierIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await dbContext.Suppliers
+            .AsNoTracking()
+            .Where(supplier => supplierIds.Contains(supplier.Id))
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<int> CountAsync(
         string? search,
         bool? isActive,
