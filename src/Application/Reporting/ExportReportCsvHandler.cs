@@ -232,11 +232,11 @@ public sealed class ExportReportCsvHandler(
 
         if (value.Contains('"'))
         {
-            value = value.Replace(""", """");
+            value = value.Replace("\"", "\"\"");
         }
 
         return value.IndexOfAny([',', '"', '\r', '\n']) >= 0
-            ? $""{value}""
+            ? $"\\\"{value}\\\""
             : value;
     }
 
