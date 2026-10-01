@@ -78,8 +78,8 @@ public sealed class ReportingTests
     {
         var report = new ReportResult<int>(
             [1, 2],
-            totalCount: 10,
-            limit: 2);
+            TotalCount: 10,
+            Limit: 2);
 
         Assert.True(report.IsTruncated);
     }
