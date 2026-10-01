@@ -17,6 +17,12 @@
                 </Authorized>
             </AuthorizeView>
 
+            <AuthorizeView Policy="@Permissions.AuditTrail.View">
+                <Authorized>
+                    <a href="/audit-trail">Audit trail</a>
+                </Authorized>
+            </AuthorizeView>
+
             <AuthorizeView Policy="@Permissions.Projects.View">
                 <Authorized>
                     <a href="/projects">Projects</a>

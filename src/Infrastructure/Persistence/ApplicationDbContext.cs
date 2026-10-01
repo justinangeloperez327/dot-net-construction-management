@@ -10,6 +10,7 @@ using Domain.PurchaseOrders;
 using Domain.PurchaseRequests;
 using Domain.Suppliers;
 using Infrastructure.Identity;
+using Infrastructure.Persistence.Auditing;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -85,6 +86,9 @@ public sealed class ApplicationDbContext(
 
     public DbSet<CommercialDeduction> CommercialDeductions =>
         Set<CommercialDeduction>();
+
+    public DbSet<AuditLog> AuditLogs =>
+        Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

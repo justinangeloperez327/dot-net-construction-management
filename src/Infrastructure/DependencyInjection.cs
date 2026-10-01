@@ -1,4 +1,5 @@
 using Application.Approvals;
+using Application.Auditing;
 using Application.Clients;
 using Application.Common.Authorization;
 using Application.Commercial;
@@ -42,10 +43,17 @@ public static class DependencyInjection
                 "Connection string 'Database' is not configured.");
         }
 
-        services.AddDbContext<ApplicationDbContext>(options =>
+        services.AddScoped<AuditSaveChangesInterceptor>();
+
+        services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
+        {
             options.UseSqlServer(
                 connectionString,
-                sqlServerOptions => sqlServerOptions.EnableRetryOnFailure()));
+                sqlServerOptions => sqlServerOptions.EnableRetryOnFailure());
+
+            options.AddInterceptors(
+                serviceProvider.GetRequiredService<AuditSaveChangesInterceptor>());
+        });
 
         services
             .AddIdentityCore<ApplicationUser>(options =>
@@ -118,6 +126,7 @@ public static class DependencyInjection
         services.AddScoped<ICommercialCertificationRepository, CommercialCertificationRepository>();
         services.AddScoped<IDashboardQueryService, DashboardQueryService>();
         services.AddScoped<IReportingQueryService, ReportingQueryService>();
+        services.AddScoped<IAuditTrailQueryService, AuditTrailQueryService>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 
         var storageRoot = configuration["FileStorage:RootPath"];
