@@ -28,6 +28,8 @@ public sealed class AuditSaveChangesInterceptor(
     {
         if (eventData.Context is DbContext context)
         {
+            EnsureAppendOnly(context);
+
             AppendAuditLogs(
                 context,
                 actor: null,
@@ -47,6 +49,8 @@ public sealed class AuditSaveChangesInterceptor(
             return result;
         }
 
+        EnsureAppendOnly(context);
+
         var actor = await currentUser.GetAsync(cancellationToken);
 
         AppendAuditLogs(
@@ -55,6 +59,21 @@ public sealed class AuditSaveChangesInterceptor(
             timeProvider.GetUtcNow());
 
         return result;
+    }
+
+    private static void EnsureAppendOnly(DbContext context)
+    {
+        var invalidAuditChanges = context.ChangeTracker
+            .Entries<AuditLog>()
+            .Any(entry =>
+                entry.State is EntityState.Modified
+                    or EntityState.Deleted);
+
+        if (invalidAuditChanges)
+        {
+            throw new InvalidOperationException(
+                "Audit log entries are append-only and cannot be modified or deleted.");
+        }
     }
 
     private static void AppendAuditLogs(

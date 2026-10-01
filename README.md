@@ -4,36 +4,41 @@ A deployable construction project management application built with .NET 10 and 
 
 ## Current milestone
 
-Group 20 — Reporting
+Group 21 — Audit Trail
 
-The application now provides historical, filterable project reporting and CSV exports.
+The application now records append-only business-data audit events through an EF Core SaveChanges interceptor.
 
-Report workspace:
+Audit events capture:
 
-- Project Portfolio
-- Daily Site Register
-- Procurement Register
-- Commercial Register
+- create / update / delete operation
+- entity type
+- entity identifier
+- project context when resolvable
+- authenticated actor ID and email
+- UTC occurrence timestamp
+- JSON scalar-property changes
+
+Only Domain entities are audited. ASP.NET Core Identity persistence is deliberately excluded so password hashes, security stamps, authentication tokens, and role-claim internals are never copied into audit JSON.
+
+Audit records are inserted in the same database transaction as the business change.
+
+AuditLogs are append-only at the application persistence layer and have no foreign keys back to business records, preserving history independently from later record deletion.
+
+Routes:
+
+- /audit-trail
+- /projects/{projectId}/audit-trail
 
 Filters:
 
 - Project
+- Action
+- Entity Type
+- Actor
 - From Date
 - To Date
 
-CSV exports:
-
-- use the same reporting read models as the UI
-- export the complete filtered dataset
-- use UTF-8 BOM for Excel compatibility
-- use invariant dates and decimals
-- correctly escape commas, quotes, and line breaks
-
-On-screen report tables are limited to 200 rows to avoid unbounded Blazor rendering. When more rows exist, the UI directs the user to the full CSV export.
-
-Reporting uses a dedicated Application read contract and EF Core read service. No reporting state is persisted and Group 20 adds no database migration.
-
-See docs/reporting.md.
+See docs/audit-trail.md.
 
 ## Build
 
