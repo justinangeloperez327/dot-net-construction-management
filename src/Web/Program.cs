@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.ResponseCompression;
 using Web.Authentication;
 using Web.Components;
 using Web.Security;
@@ -34,6 +35,13 @@ builder.WebHost.ConfigureKestrel(options =>
 builder.Services
     .AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes
+        .Concat(["text/csv"]);
+});
 
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<
@@ -206,6 +214,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseResponseCompression();
 app.UseStaticFiles();
 
 app.UseRouting();

@@ -4,29 +4,20 @@ A deployable construction project management application built with .NET 10 and 
 
 ## Current milestone
 
-Group 22 — Security Hardening
+Group 23 — Performance and Database Optimization
 
 The application now includes:
 
-- five-minute Interactive Server authentication revalidation
-- four-minute Identity security-stamp cookie validation
-- stricter password and lockout policy
-- secure host-only authentication cookie
-- CSP and defensive HTTP headers
-- HSTS
-- trusted forwarded-header handling
-- non-wildcard host filtering
-- request/form size limits
-- rate limiting on authentication, export, and file-download endpoints
-- persistent Data Protection key configuration
-- sanitized security-event storage
-- upload magic-byte validation for JPEG, PNG, WebP, and PDF
+- consolidated portfolio project metrics to reduce database round trips
+- composite indexes aligned with dashboard, workflow, and reporting hot paths
+- optimized project/date/status access patterns
+- configurable SQL Server command timeout and transient retry behavior
+- HTTPS response compression, including CSV exports
+- EF Core model coverage tests for performance-critical indexes
 
-Security events are available at /security-events.
+Database tuning defaults are configured under `Database` in `appsettings.json`.
 
-AllowedHosts is restricted to localhost by default. Production must explicitly configure its host names and trusted proxies.
-
-See docs/security-hardening.md.
+See `docs/performance-database-optimization.md`.
 
 ## Build
 

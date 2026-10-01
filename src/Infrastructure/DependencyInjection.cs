@@ -45,13 +45,37 @@ public static class DependencyInjection
                 "Connection string 'Database' is not configured.");
         }
 
+        var commandTimeoutSeconds = GetBoundedInt(
+            configuration["Database:CommandTimeoutSeconds"],
+            fallback: 30,
+            minimum: 5,
+            maximum: 300);
+        var maxRetryCount = GetBoundedInt(
+            configuration["Database:MaxRetryCount"],
+            fallback: 5,
+            minimum: 0,
+            maximum: 10);
+        var maxRetryDelaySeconds = GetBoundedInt(
+            configuration["Database:MaxRetryDelaySeconds"],
+            fallback: 10,
+            minimum: 1,
+            maximum: 60);
+
         services.AddScoped<AuditSaveChangesInterceptor>();
 
         services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
         {
             options.UseSqlServer(
                 connectionString,
-                sqlServerOptions => sqlServerOptions.EnableRetryOnFailure());
+                sqlServerOptions =>
+                {
+                    sqlServerOptions.CommandTimeout(
+                        commandTimeoutSeconds);
+                    sqlServerOptions.EnableRetryOnFailure(
+                        maxRetryCount,
+                        TimeSpan.FromSeconds(maxRetryDelaySeconds),
+                        errorNumbersToAdd: null);
+                });
 
             options.AddInterceptors(
                 serviceProvider.GetRequiredService<AuditSaveChangesInterceptor>());
@@ -169,5 +193,16 @@ public static class DependencyInjection
                 tags: ["ready"]);
 
         return services;
+    }
+
+    private static int GetBoundedInt(
+        string? value,
+        int fallback,
+        int minimum,
+        int maximum)
+    {
+        return int.TryParse(value, out var parsed)
+            ? Math.Clamp(parsed, minimum, maximum)
+            : fallback;
     }
 }
