@@ -2,6 +2,7 @@ using Application.Approvals;
 using Application.Clients;
 using Application.Commercial;
 using Application.DailyReports;
+using Application.Dashboard;
 using Application.Deliveries;
 using Application.Documents;
 using Application.PaymentApplications;
@@ -152,6 +153,9 @@ public static class DependencyInjection
         services.AddScoped<
             IApprovalSubjectOutcomeHandler,
             CommercialCertificationApprovalOutcomeHandler>();
+
+        services.AddScoped<GetPortfolioDashboardHandler>();
+        services.AddScoped<GetProjectDashboardHandler>();
 
         return services;
     }

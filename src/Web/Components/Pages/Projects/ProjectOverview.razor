@@ -19,6 +19,15 @@ else
         </div>
 
         <div class="page-actions">
+            <AuthorizeView Policy="@Permissions.Dashboard.View">
+                <Authorized>
+                    <a class="button-link"
+                       href="@($"/projects/{Id}/dashboard")">
+                        Dashboard
+                    </a>
+                </Authorized>
+            </AuthorizeView>
+
             <AuthorizeView Policy="@Permissions.DailyReports.View">
                 <Authorized>
                     <a class="button-link"
