@@ -3,6 +3,7 @@ using Application.Common.Authentication;
 using Application.Common.Authorization;
 using Application.DailyReports;
 using Application.Documents;
+using Application.Reporting;
 using Infrastructure;
 using Infrastructure.Identity;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -52,6 +53,48 @@ app.MapHealthChecks(
     });
 
 app.MapAuthenticationEndpoints();
+
+app.MapGet(
+        "/reports/export/{report}",
+        async (
+            string report,
+            Guid? projectId,
+            DateOnly? from,
+            DateOnly? to,
+            ExportReportCsvHandler exporter,
+            CancellationToken cancellationToken) =>
+        {
+            if (!Enum.TryParse<ReportKind>(
+                    report,
+                    ignoreCase: true,
+                    out var reportKind))
+            {
+                return Results.BadRequest(
+                    "Unknown report type.");
+            }
+
+            if (from is not null &&
+                to is not null &&
+                to < from)
+            {
+                return Results.BadRequest(
+                    "The report end date cannot be before the start date.");
+            }
+
+            var file = await exporter.HandleAsync(
+                reportKind,
+                new ReportingFilter(
+                    projectId,
+                    from,
+                    to),
+                cancellationToken);
+
+            return Results.File(
+                file.Content,
+                contentType: "text/csv; charset=utf-8",
+                fileDownloadName: file.FileName);
+        })
+    .RequireAuthorization(Permissions.Reports.Export);
 
 app.MapGet(
         "/files/daily-reports/{reportId:guid}/attachments/{attachmentId:guid}",
