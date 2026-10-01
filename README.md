@@ -4,35 +4,41 @@ A deployable construction project management application built with .NET 10 and 
 
 ## Current milestone
 
-Group 18 — Commercial Approvals
+Group 19 — Dashboard
 
-The application now supports formal commercial certification of approved Payment Applications.
+The application now provides live portfolio and project dashboards over the existing construction-management workflows.
 
-Commercial Certification includes:
+Portfolio dashboard:
 
-- one certificate per approved Payment Application
-- project-scoped certificate number
-- claimed amount snapshot
-- commercial certified amount
-- uncertified amount
-- retention percentage and derived retention amount
-- advance-payment recovery
-- reasoned other deductions
-- total deductions
-- derived payable amount
-- Draft / Pending Approval / Approved / Rejected / Cancelled lifecycle
-- reusable approval-engine integration
-- project certification register
-- certification workflow from approved Payment Applications
-- SQL Server persistence
+- active / closed / overdue projects
+- open site issues
+- the signed-in user's pending approval steps
+- Purchase Requests pending approval
+- Purchase Orders pending approval
+- draft Deliveries
+- Payment Applications pending approval
+- Commercial Certifications pending approval
+- active-project attention cards
 
-The core formula is:
+Project dashboard:
 
-Payable Amount = Certified Amount - Retention - Advance Recovery - Other Deductions
+- target completion and overdue state
+- latest Daily Report
+- open site issues
+- pending project approvals
+- Daily Report status counts
+- Document status counts
+- Purchase Request status counts
+- Purchase Order status counts
+- Delivery status counts
+- Payment Application status counts
+- Commercial Certification status counts
 
-Certified Amount cannot exceed the supplier's approved claim, and total deductions cannot exceed the certified amount.
+The dashboard uses a dedicated EF Core read-model service instead of forcing analytical queries through transactional repositories.
 
-See docs/commercial-certifications.md.
+Group 19 adds no database tables or migration.
+
+See docs/dashboard.md.
 
 ## Build
 

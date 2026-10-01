@@ -133,17 +133,51 @@ else
         </div>
 
         <div class="workflow-card-grid">
-            @WorkflowCard(
-                "Purchase requests",
-                _dashboard.PurchaseRequests,
-                $"/projects/{ProjectId}/purchase-requests",
-                Permissions.PurchaseRequests.View)
+            <article class="workflow-card">
+                <div class="workflow-card-heading">
+                    <h3>Purchase requests</h3>
+                    <strong>@_dashboard.PurchaseRequests.Total</strong>
+                </div>
 
-            @WorkflowCard(
-                "Purchase orders",
-                _dashboard.PurchaseOrders,
-                $"/projects/{ProjectId}/purchase-orders",
-                Permissions.PurchaseOrders.View)
+                <div class="workflow-breakdown">
+                    <span>Draft @_dashboard.PurchaseRequests.Draft</span>
+                    <span>Pending @_dashboard.PurchaseRequests.PendingApproval</span>
+                    <span>Approved @_dashboard.PurchaseRequests.Approved</span>
+                    <span>Rejected @_dashboard.PurchaseRequests.Rejected</span>
+                    <span>Cancelled @_dashboard.PurchaseRequests.Cancelled</span>
+                </div>
+
+                <AuthorizeView Policy="@Permissions.PurchaseRequests.View">
+                    <Authorized>
+                        <a href="@($"/projects/{ProjectId}/purchase-requests")">
+                            Open purchase requests
+                        </a>
+                    </Authorized>
+                </AuthorizeView>
+            </article>
+
+            <article class="workflow-card">
+                <div class="workflow-card-heading">
+                    <h3>Purchase orders</h3>
+                    <strong>@_dashboard.PurchaseOrders.Total</strong>
+                </div>
+
+                <div class="workflow-breakdown">
+                    <span>Draft @_dashboard.PurchaseOrders.Draft</span>
+                    <span>Pending @_dashboard.PurchaseOrders.PendingApproval</span>
+                    <span>Approved @_dashboard.PurchaseOrders.Approved</span>
+                    <span>Rejected @_dashboard.PurchaseOrders.Rejected</span>
+                    <span>Cancelled @_dashboard.PurchaseOrders.Cancelled</span>
+                </div>
+
+                <AuthorizeView Policy="@Permissions.PurchaseOrders.View">
+                    <Authorized>
+                        <a href="@($"/projects/{ProjectId}/purchase-orders")">
+                            Open purchase orders
+                        </a>
+                    </Authorized>
+                </AuthorizeView>
+            </article>
 
             <article class="workflow-card">
                 <div class="workflow-card-heading">
@@ -166,17 +200,51 @@ else
                 </AuthorizeView>
             </article>
 
-            @WorkflowCard(
-                "Payment applications",
-                _dashboard.PaymentApplications,
-                $"/projects/{ProjectId}/payment-applications",
-                Permissions.PaymentApplications.View)
+            <article class="workflow-card">
+                <div class="workflow-card-heading">
+                    <h3>Payment applications</h3>
+                    <strong>@_dashboard.PaymentApplications.Total</strong>
+                </div>
 
-            @WorkflowCard(
-                "Commercial certifications",
-                _dashboard.CommercialCertifications,
-                $"/projects/{ProjectId}/commercial-certifications",
-                Permissions.CommercialCertifications.View)
+                <div class="workflow-breakdown">
+                    <span>Draft @_dashboard.PaymentApplications.Draft</span>
+                    <span>Pending @_dashboard.PaymentApplications.PendingApproval</span>
+                    <span>Approved @_dashboard.PaymentApplications.Approved</span>
+                    <span>Rejected @_dashboard.PaymentApplications.Rejected</span>
+                    <span>Cancelled @_dashboard.PaymentApplications.Cancelled</span>
+                </div>
+
+                <AuthorizeView Policy="@Permissions.PaymentApplications.View">
+                    <Authorized>
+                        <a href="@($"/projects/{ProjectId}/payment-applications")">
+                            Open payment applications
+                        </a>
+                    </Authorized>
+                </AuthorizeView>
+            </article>
+
+            <article class="workflow-card">
+                <div class="workflow-card-heading">
+                    <h3>Commercial certifications</h3>
+                    <strong>@_dashboard.CommercialCertifications.Total</strong>
+                </div>
+
+                <div class="workflow-breakdown">
+                    <span>Draft @_dashboard.CommercialCertifications.Draft</span>
+                    <span>Pending @_dashboard.CommercialCertifications.PendingApproval</span>
+                    <span>Approved @_dashboard.CommercialCertifications.Approved</span>
+                    <span>Rejected @_dashboard.CommercialCertifications.Rejected</span>
+                    <span>Cancelled @_dashboard.CommercialCertifications.Cancelled</span>
+                </div>
+
+                <AuthorizeView Policy="@Permissions.CommercialCertifications.View">
+                    <Authorized>
+                        <a href="@($"/projects/{ProjectId}/commercial-certifications")">
+                            Open commercial certifications
+                        </a>
+                    </Authorized>
+                </AuthorizeView>
+            </article>
         </div>
     </section>
 }
@@ -213,31 +281,4 @@ else
         };
     }
 
-    private RenderFragment WorkflowCard(
-        string title,
-        ApprovalWorkflowCounts counts,
-        string href,
-        string policy) => builder =>
-    {
-        <article class="workflow-card">
-            <div class="workflow-card-heading">
-                <h3>@title</h3>
-                <strong>@counts.Total</strong>
-            </div>
-
-            <div class="workflow-breakdown">
-                <span>Draft @counts.Draft</span>
-                <span>Pending @counts.PendingApproval</span>
-                <span>Approved @counts.Approved</span>
-                <span>Rejected @counts.Rejected</span>
-                <span>Cancelled @counts.Cancelled</span>
-            </div>
-
-            <AuthorizeView Policy="@policy">
-                <Authorized>
-                    <a href="@href">Open @title.ToLowerInvariant()</a>
-                </Authorized>
-            </AuthorizeView>
-        </article>
-    };
 }
