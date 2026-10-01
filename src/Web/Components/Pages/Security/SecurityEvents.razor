@@ -1,6 +1,6 @@
 @page "/security-events"
 @attribute [Authorize(Policy = Permissions.Security.ViewEvents)]
-@inject ListSecurityEventsHandler SecurityEvents
+@inject ListSecurityEventsHandler SecurityEventReader
 
 <PageTitle>Security events</PageTitle>
 
@@ -181,7 +181,7 @@ else
                 ? parsed
                 : null;
 
-        _result = await SecurityEvents.HandleAsync(
+        _result = await SecurityEventReader.HandleAsync(
             new SecurityEventQuery(
                 eventType,
                 string.IsNullOrWhiteSpace(_email) ? null : _email,
