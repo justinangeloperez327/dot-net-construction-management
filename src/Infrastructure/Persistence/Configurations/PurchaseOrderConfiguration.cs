@@ -55,6 +55,19 @@ public sealed class PurchaseOrderConfiguration
             .IsRequired();
 
         builder.HasIndex(order => order.ProjectId);
+
+        builder.HasIndex(order => new
+        {
+            order.Status,
+            order.ProjectId
+        });
+
+        builder.HasIndex(order => new
+        {
+            order.ProjectId,
+            order.OrderDate,
+            order.PurchaseOrderNumber
+        });
         builder.HasIndex(order => order.PurchaseRequestId);
         builder.HasIndex(order => order.SupplierId);
         builder.HasIndex(order => order.CreatedByUserId);

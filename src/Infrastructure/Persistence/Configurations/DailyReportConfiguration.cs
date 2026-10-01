@@ -22,6 +22,13 @@ public sealed class DailyReportConfiguration
             report.ReportDate
         }).IsUnique();
 
+        builder.HasIndex(report => new
+        {
+            report.ProjectId,
+            report.Status,
+            report.ReportDate
+        });
+
         builder.Property(report => report.ReportDate)
             .HasColumnType("date");
 

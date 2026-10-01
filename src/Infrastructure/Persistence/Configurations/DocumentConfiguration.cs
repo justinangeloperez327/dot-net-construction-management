@@ -47,6 +47,13 @@ public sealed class DocumentConfiguration
             document.DocumentNumber
         }).IsUnique();
 
+        builder.HasIndex(document => new
+        {
+            document.ProjectId,
+            document.Status,
+            document.DocumentNumber
+        });
+
         builder.HasIndex(document => document.CreatedByUserId);
 
         builder.HasOne<Project>()

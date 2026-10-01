@@ -47,6 +47,12 @@ public sealed class ApprovalRequestConfiguration
 
         builder.HasIndex(request => request.ProjectId);
 
+        builder.HasIndex(request => new
+        {
+            request.Status,
+            request.ProjectId
+        });
+
         builder.HasIndex(request => request.RequestedByUserId);
 
         builder.HasOne<Project>()
@@ -98,6 +104,12 @@ public sealed class ApprovalStepConfiguration
         }).IsUnique();
 
         builder.HasIndex(step => step.ApproverUserId);
+
+        builder.HasIndex(step => new
+        {
+            step.ApproverUserId,
+            step.Status
+        });
 
         builder.HasOne<ApplicationUser>()
             .WithMany()

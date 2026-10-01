@@ -21,26 +21,25 @@ public sealed class DashboardQueryService(
         DateOnly today,
         CancellationToken cancellationToken = default)
     {
-        var activeProjects = await dbContext.Projects
+        var projectMetrics = await dbContext.Projects
             .AsNoTracking()
-            .CountAsync(
-                project => project.Status == ProjectStatus.Active,
-                cancellationToken);
-
-        var closedProjects = await dbContext.Projects
-            .AsNoTracking()
-            .CountAsync(
-                project => project.Status == ProjectStatus.Closed,
-                cancellationToken);
-
-        var overdueProjects = await dbContext.Projects
-            .AsNoTracking()
-            .CountAsync(
-                project =>
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                ActiveProjects = group.Count(project =>
+                    project.Status == ProjectStatus.Active),
+                ClosedProjects = group.Count(project =>
+                    project.Status == ProjectStatus.Closed),
+                OverdueProjects = group.Count(project =>
                     project.Status == ProjectStatus.Active &&
                     project.TargetCompletionDate != null &&
-                    project.TargetCompletionDate < today,
-                cancellationToken);
+                    project.TargetCompletionDate < today)
+            })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        var activeProjects = projectMetrics?.ActiveProjects ?? 0;
+        var closedProjects = projectMetrics?.ClosedProjects ?? 0;
+        var overdueProjects = projectMetrics?.OverdueProjects ?? 0;
 
         var openSiteIssues = await dbContext.DailyReportSiteIssues
             .AsNoTracking()
