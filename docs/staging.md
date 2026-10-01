@@ -8,7 +8,7 @@ Each successful staging workflow run produces:
 
 - `ghcr.io/<owner>/<repository>:<commit-sha>`
 - `ghcr.io/<owner>/<repository>:staging`
-- a Linux EF Core migration bundle named `efbundle`
+- a self-contained Linux x64 EF Core migration bundle named `efbundle`
 - `staging-release.json` containing the commit and image tags
 
 The immutable commit tag is the deployment source of truth. The `staging` tag is a convenience channel.
