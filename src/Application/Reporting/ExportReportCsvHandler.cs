@@ -236,7 +236,7 @@ public sealed class ExportReportCsvHandler(
         }
 
         return value.IndexOfAny([',', '"', '\r', '\n']) >= 0
-            ? $"\\\"{value}\\\""
+            ? $"\"{value}\""
             : value;
     }
 
