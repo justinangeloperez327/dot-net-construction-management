@@ -51,6 +51,18 @@ else
                 </AuthorizeView>
             }
 
+            @if (_order.Status == PurchaseOrderStatus.Approved)
+            {
+                <AuthorizeView Policy="@Permissions.PaymentApplications.Create">
+                    <Authorized>
+                        <a class="button-link"
+                           href="@($"/purchase-orders/{Id}/payment-applications/create")">
+                            Create payment application
+                        </a>
+                    </Authorized>
+                </AuthorizeView>
+            }
+
             <a href="@($"/projects/{_order.ProjectId}/purchase-orders")">
                 Back to purchase orders
             </a>

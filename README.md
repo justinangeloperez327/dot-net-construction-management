@@ -4,30 +4,36 @@ A deployable construction project management application built with .NET 10 and 
 
 ## Current milestone
 
-Group 16 — Deliveries
+Group 17 — Payment Applications
 
-The application now supports partial delivery receiving against approved Purchase Orders.
+The application now supports supplier payment applications against approved Purchase Orders and physically received quantities.
 
-Deliveries include:
+Payment Applications include:
 
-- supplier delivery note number
-- delivery date
-- optional vehicle / transport reference
-- remarks
+- PO-scoped application number
+- application date
+- optional claim period
+- notes
 - creator and creation timestamp
-- Draft / Received / Cancelled lifecycle
-- selected Purchase Order lines
-- actual delivered quantities
-- cumulative received-quantity protection
-- receiving user and timestamp
-- immutable posted receipts
-- project delivery register
-- approved-PO delivery creation workflow
+- Draft / Pending Approval / Approved / Rejected / Cancelled lifecycle
+- claim lines tied to PO items
+- received quantity visibility
+- prior committed claim visibility
+- remaining claimable quantity
+- PO unit price, discount, and tax terms
+- derived claimed amount
+- reusable approval workflow
+- project payment-application register
+- approved-PO creation workflow
 - SQL Server persistence
 
-Multiple deliveries can fulfill one PO line. Only Received deliveries consume the ordered quantity. Draft receipts do not reserve quantity.
+The central control is:
 
-Once a delivery is Received it is immutable in Group 16. Reversals, returns, rejected materials, warehouse stock, quality inspections, and invoice matching require explicit later workflows and are not simulated by editing historical receipts.
+received quantity - quantities in Pending Approval / Approved applications = claimable quantity
+
+Draft and Rejected applications do not reserve claim quantity.
+
+Payment applications remain available during project close-out because commercial settlement can continue after operational project closure.
 
 ## Build
 
@@ -40,7 +46,7 @@ dotnet test CPM.slnx --configuration Release --no-build
 
 Apply database migrations explicitly with dotnet ef database update using Infrastructure as the migration project and Web as the startup project.
 
-See docs/deliveries.md.
+See docs/payment-applications.md.
 
 ## Planned development order
 

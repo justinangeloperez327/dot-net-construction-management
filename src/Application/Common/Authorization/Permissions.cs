@@ -63,6 +63,15 @@ public static class Permissions
         public const string Cancel = "deliveries.cancel";
     }
 
+    public static class PaymentApplications
+    {
+        public const string View = "payment_applications.view";
+        public const string Create = "payment_applications.create";
+        public const string Update = "payment_applications.update";
+        public const string Submit = "payment_applications.submit";
+        public const string Cancel = "payment_applications.cancel";
+    }
+
     public static class Projects
     {
         public const string View = "projects.view";
@@ -135,6 +144,11 @@ public static class Permissions
         Deliveries.Update,
         Deliveries.Receive,
         Deliveries.Cancel,
+        PaymentApplications.View,
+        PaymentApplications.Create,
+        PaymentApplications.Update,
+        PaymentApplications.Submit,
+        PaymentApplications.Cancel,
         Projects.View,
         Projects.Create,
         Projects.Update,

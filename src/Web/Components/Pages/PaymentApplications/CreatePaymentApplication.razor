@@ -1,0 +1,134 @@
+@page "/purchase-orders/{PurchaseOrderId:guid}/payment-applications/create"
+@attribute [Authorize(Policy = Permissions.PaymentApplications.Create)]
+@inject GetPurchaseOrderHandler PurchaseOrderReader
+@inject CreatePaymentApplicationHandler PaymentApplicationCreator
+@inject NavigationManager Navigation
+
+<PageTitle>Create payment application</PageTitle>
+
+@if (_order is null)
+{
+    <h1>Purchase order not found</h1>
+}
+else if (_order.Status != PurchaseOrderStatus.Approved)
+{
+    <h1>Create payment application</h1>
+    <p>Payment applications can only be created against an approved purchase order.</p>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <h1>Create payment application</h1>
+            <p>@_order.PurchaseOrderNumber · @_order.SupplierName</p>
+        </div>
+
+        <a href="@($"/purchase-orders/{PurchaseOrderId}")">
+            Back to purchase order
+        </a>
+    </div>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    <EditForm Model="_model"
+              OnValidSubmit="CreateAsync"
+              class="form-grid">
+        <DataAnnotationsValidator />
+
+        <label for="application-number">Application number</label>
+        <InputText id="application-number"
+                   @bind-Value="_model.ApplicationNumber" />
+        <ValidationMessage For="() => _model.ApplicationNumber" />
+
+        <label for="application-date">Application date</label>
+        <InputDate id="application-date"
+                   @bind-Value="_model.ApplicationDate" />
+
+        <label for="period-from">Period from</label>
+        <InputDate id="period-from"
+                   @bind-Value="_model.PeriodFrom" />
+
+        <label for="period-to">Period to</label>
+        <InputDate id="period-to"
+                   @bind-Value="_model.PeriodTo" />
+
+        <label for="notes">Notes</label>
+        <InputTextArea id="notes"
+                       @bind-Value="_model.Notes" />
+
+        <button type="submit">Create draft application</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public Guid PurchaseOrderId { get; set; }
+
+    private Application.PurchaseOrders.PurchaseOrderDetails? _order;
+    private readonly PaymentApplicationFormModel _model = new();
+    private readonly List<string> _errors = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _order = await PurchaseOrderReader.HandleAsync(
+            PurchaseOrderId);
+
+        if (_order is not null)
+        {
+            _model.ApplicationDate = DateOnly.FromDateTime(DateTime.Today);
+
+            if (_model.ApplicationDate < _order.OrderDate)
+            {
+                _model.ApplicationDate = _order.OrderDate;
+            }
+        }
+    }
+
+    private async Task CreateAsync()
+    {
+        _errors.Clear();
+
+        var result = await PaymentApplicationCreator.HandleAsync(
+            new CreatePaymentApplicationCommand(
+                PurchaseOrderId,
+                _model.ApplicationNumber,
+                _model.ApplicationDate,
+                _model.PeriodFrom,
+                _model.PeriodTo,
+                _model.Notes));
+
+        if (result.Succeeded &&
+            result.PaymentApplicationId is Guid paymentApplicationId)
+        {
+            Navigation.NavigateTo(
+                $"/payment-applications/{paymentApplicationId}");
+            return;
+        }
+
+        _errors.AddRange(result.Errors);
+    }
+
+    private sealed class PaymentApplicationFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string ApplicationNumber { get; set; } = string.Empty;
+
+        public DateOnly ApplicationDate { get; set; }
+
+        public DateOnly? PeriodFrom { get; set; }
+
+        public DateOnly? PeriodTo { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(2000)]
+        public string? Notes { get; set; }
+    }
+}
