@@ -9,6 +9,7 @@ using Application.Documents;
 using Application.PaymentApplications;
 using Application.Projects;
 using Application.Reporting;
+using Application.Security;
 using Application.PurchaseOrders;
 using Application.PurchaseRequests;
 using Application.Suppliers;
@@ -168,6 +169,8 @@ public static class DependencyInjection
 
         services.AddScoped<ListAuditTrailHandler>();
         services.AddScoped<ListAuditEntityTypesHandler>();
+
+        services.AddScoped<ListSecurityEventsHandler>();
 
         return services;
     }

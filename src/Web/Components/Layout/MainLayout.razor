@@ -23,6 +23,12 @@
                 </Authorized>
             </AuthorizeView>
 
+            <AuthorizeView Policy="@Permissions.Security.ViewEvents">
+                <Authorized>
+                    <a href="/security-events">Security</a>
+                </Authorized>
+            </AuthorizeView>
+
             <AuthorizeView Policy="@Permissions.Projects.View">
                 <Authorized>
                     <a href="/projects">Projects</a>

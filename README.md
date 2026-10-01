@@ -4,41 +4,29 @@ A deployable construction project management application built with .NET 10 and 
 
 ## Current milestone
 
-Group 21 — Audit Trail
+Group 22 — Security Hardening
 
-The application now records append-only business-data audit events through an EF Core SaveChanges interceptor.
+The application now includes:
 
-Audit events capture:
+- five-minute Interactive Server authentication revalidation
+- four-minute Identity security-stamp cookie validation
+- stricter password and lockout policy
+- secure host-only authentication cookie
+- CSP and defensive HTTP headers
+- HSTS
+- trusted forwarded-header handling
+- non-wildcard host filtering
+- request/form size limits
+- rate limiting on authentication, export, and file-download endpoints
+- persistent Data Protection key configuration
+- sanitized security-event storage
+- upload magic-byte validation for JPEG, PNG, WebP, and PDF
 
-- create / update / delete operation
-- entity type
-- entity identifier
-- project context when resolvable
-- authenticated actor ID and email
-- UTC occurrence timestamp
-- JSON scalar-property changes
+Security events are available at /security-events.
 
-Only Domain entities are audited. ASP.NET Core Identity persistence is deliberately excluded so password hashes, security stamps, authentication tokens, and role-claim internals are never copied into audit JSON.
+AllowedHosts is restricted to localhost by default. Production must explicitly configure its host names and trusted proxies.
 
-Audit records are inserted in the same database transaction as the business change.
-
-AuditLogs are append-only at the application persistence layer and have no foreign keys back to business records, preserving history independently from later record deletion.
-
-Routes:
-
-- /audit-trail
-- /projects/{projectId}/audit-trail
-
-Filters:
-
-- Project
-- Action
-- Entity Type
-- Actor
-- From Date
-- To Date
-
-See docs/audit-trail.md.
+See docs/security-hardening.md.
 
 ## Build
 

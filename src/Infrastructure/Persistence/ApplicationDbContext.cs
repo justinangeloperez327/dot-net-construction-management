@@ -11,6 +11,7 @@ using Domain.PurchaseRequests;
 using Domain.Suppliers;
 using Infrastructure.Identity;
 using Infrastructure.Persistence.Auditing;
+using Infrastructure.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -89,6 +90,9 @@ public sealed class ApplicationDbContext(
 
     public DbSet<AuditLog> AuditLogs =>
         Set<AuditLog>();
+
+    public DbSet<SecurityEventLog> SecurityEvents =>
+        Set<SecurityEventLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

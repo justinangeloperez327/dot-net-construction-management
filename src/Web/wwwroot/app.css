@@ -612,3 +612,13 @@ button:disabled {
         flex-direction: column;
     }
 }
+
+
+.security-event-details {
+    display: grid;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+    color: #64748b;
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+}

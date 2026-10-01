@@ -97,6 +97,11 @@ public static class Permissions
         public const string View = "audit_trail.view";
     }
 
+    public static class Security
+    {
+        public const string ViewEvents = "security.events.view";
+    }
+
     public static class Projects
     {
         public const string View = "projects.view";
@@ -183,6 +188,7 @@ public static class Permissions
         Reports.View,
         Reports.Export,
         AuditTrail.View,
+        Security.ViewEvents,
         Projects.View,
         Projects.Create,
         Projects.Update,

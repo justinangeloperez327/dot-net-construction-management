@@ -25,7 +25,7 @@ public sealed class DocumentRevisionHandlerTests
             new FakeCurrentUser(userId),
             TimeProvider.System);
 
-        await using var content = new MemoryStream([1, 2, 3, 4]);
+        await using var content = new MemoryStream([0x25, 0x50, 0x44, 0x46, 0x2D, 0x31]);
 
         var result = await handler.HandleAsync(
             document.Id,
@@ -71,6 +71,37 @@ public sealed class DocumentRevisionHandlerTests
                 null,
                 "drawing.svg",
                 "image/svg+xml",
+                content.Length,
+                content));
+
+        Assert.False(result.Succeeded);
+        Assert.Empty(document.Revisions);
+        Assert.Empty(storage.Files);
+    }
+
+    [Fact]
+    public async Task Create_revision_rejects_mismatched_file_signature()
+    {
+        var document = CreateDocument();
+        var storage = new FakeFileStorage();
+
+        var handler = new CreateDocumentRevisionHandler(
+            new FakeDocumentRepository(document),
+            new FakeProjectRepository(CreateProject()),
+            storage,
+            new FakeCurrentUser(Guid.NewGuid()),
+            TimeProvider.System);
+
+        await using var content = new MemoryStream(
+            [0xFF, 0xD8, 0xFF, 0xE0]);
+
+        var result = await handler.HandleAsync(
+            document.Id,
+            new CreateDocumentRevisionRequest(
+                "00",
+                null,
+                "drawing.pdf",
+                "application/pdf",
                 content.Length,
                 content));
 

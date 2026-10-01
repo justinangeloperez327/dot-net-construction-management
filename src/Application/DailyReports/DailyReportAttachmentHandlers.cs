@@ -69,6 +69,18 @@ public sealed class UploadDailyReportAttachmentHandler(
                 "An authenticated user is required.");
         }
 
+        var signatureValidation =
+            await FileSignatureValidator.ValidateAsync(
+                request.Content,
+                request.ContentType,
+                cancellationToken);
+
+        if (!signatureValidation.Succeeded)
+        {
+            return DailyReportActionResult.Failure(
+                signatureValidation.Error!);
+        }
+
         var safeFileName = Path.GetFileName(request.FileName.Trim());
         var attachmentId = Guid.NewGuid();
         var extension = FileUploadPolicy.GetNormalizedExtension(safeFileName);
@@ -79,7 +91,7 @@ public sealed class UploadDailyReportAttachmentHandler(
         {
             await fileStorage.WriteAsync(
                 storageKey,
-                request.Content,
+                signatureValidation.Content,
                 cancellationToken);
         }
         catch (Exception exception)
