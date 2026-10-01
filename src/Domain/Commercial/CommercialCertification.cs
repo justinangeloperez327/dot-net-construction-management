@@ -188,6 +188,7 @@ public sealed class CommercialCertification
         EnsureEditable();
 
         var deduction = FindDeduction(deductionId);
+        var originalDescription = deduction.Description;
         var originalAmount = deduction.Amount;
 
         deduction.Update(description, amount);
@@ -198,7 +199,7 @@ public sealed class CommercialCertification
         }
         catch
         {
-            deduction.Update(description, originalAmount);
+            deduction.Update(originalDescription, originalAmount);
             throw;
         }
     }
@@ -328,25 +329,41 @@ public sealed class CommercialCertification
                 "Advance payment recovery cannot be negative.");
         }
 
-        CertificateNumber = certificateNumber;
-        CertificateDate = certificateDate;
-        CertifiedAmount = decimal.Round(
+        var roundedCertifiedAmount = decimal.Round(
             certifiedAmount,
             2,
             MidpointRounding.AwayFromZero);
-        RetentionPercent = decimal.Round(
+        var roundedRetentionPercent = decimal.Round(
             retentionPercent,
             2,
             MidpointRounding.AwayFromZero);
-        AdvancePaymentRecoveryAmount = decimal.Round(
+        var roundedAdvanceRecovery = decimal.Round(
             advancePaymentRecoveryAmount,
             2,
             MidpointRounding.AwayFromZero);
+        var proposedRetentionAmount = decimal.Round(
+            roundedCertifiedAmount * roundedRetentionPercent / 100m,
+            2,
+            MidpointRounding.AwayFromZero);
+        var proposedTotalDeductions =
+            proposedRetentionAmount
+            + roundedAdvanceRecovery
+            + OtherDeductionAmount;
+
+        if (proposedTotalDeductions > roundedCertifiedAmount)
+        {
+            throw new InvalidOperationException(
+                "Total deductions cannot exceed the certified amount.");
+        }
+
+        CertificateNumber = certificateNumber;
+        CertificateDate = certificateDate;
+        CertifiedAmount = roundedCertifiedAmount;
+        RetentionPercent = roundedRetentionPercent;
+        AdvancePaymentRecoveryAmount = roundedAdvanceRecovery;
         Notes = string.IsNullOrWhiteSpace(notes)
             ? null
             : notes.Trim();
-
-        EnsureDeductionsWithinCertifiedAmount();
     }
 
     private void EnsureDeductionsWithinCertifiedAmount(
