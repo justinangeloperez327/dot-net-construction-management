@@ -30,6 +30,10 @@ public interface IPaymentApplicationRepository
         Guid purchaseOrderId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<PaymentApplication>> ListByIdsAsync(
+        IReadOnlyCollection<Guid> paymentApplicationIds,
+        CancellationToken cancellationToken = default);
+
     Task<int> CountForProjectAsync(
         Guid projectId,
         PaymentApplicationStatus? status,

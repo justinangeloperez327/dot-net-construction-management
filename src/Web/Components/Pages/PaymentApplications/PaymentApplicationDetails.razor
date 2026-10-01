@@ -38,6 +38,18 @@ else
                 </a>
             }
 
+            @if (_application.Status == PaymentApplicationStatus.Approved)
+            {
+                <AuthorizeView Policy="@Permissions.CommercialCertifications.Create">
+                    <Authorized>
+                        <a class="button-link"
+                           href="@($"/payment-applications/{Id}/commercial-certifications/create")">
+                            Commercial certification
+                        </a>
+                    </Authorized>
+                </AuthorizeView>
+            }
+
             <a href="@($"/projects/{_application.ProjectId}/payment-applications")">
                 Back to payment applications
             </a>

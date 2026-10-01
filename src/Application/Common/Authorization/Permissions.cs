@@ -72,6 +72,15 @@ public static class Permissions
         public const string Cancel = "payment_applications.cancel";
     }
 
+    public static class CommercialCertifications
+    {
+        public const string View = "commercial_certifications.view";
+        public const string Create = "commercial_certifications.create";
+        public const string Update = "commercial_certifications.update";
+        public const string Submit = "commercial_certifications.submit";
+        public const string Cancel = "commercial_certifications.cancel";
+    }
+
     public static class Projects
     {
         public const string View = "projects.view";
@@ -149,6 +158,11 @@ public static class Permissions
         PaymentApplications.Update,
         PaymentApplications.Submit,
         PaymentApplications.Cancel,
+        CommercialCertifications.View,
+        CommercialCertifications.Create,
+        CommercialCertifications.Update,
+        CommercialCertifications.Submit,
+        CommercialCertifications.Cancel,
         Projects.View,
         Projects.Create,
         Projects.Update,

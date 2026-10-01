@@ -339,6 +339,15 @@ public sealed class PaymentApplicationWorkflowTests
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<PaymentApplication>>([]);
 
+        public Task<IReadOnlyList<PaymentApplication>> ListByIdsAsync(
+            IReadOnlyCollection<Guid> paymentApplicationIds,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<PaymentApplication>>(
+                _application is not null &&
+                paymentApplicationIds.Contains(_application.Id)
+                    ? [_application]
+                    : []);
+
         public Task<int> CountForProjectAsync(
             Guid projectId,
             PaymentApplicationStatus? status,
