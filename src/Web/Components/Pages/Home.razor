@@ -1,12 +1,181 @@
 @page "/"
+@page "/dashboard"
+@attribute [Authorize(Policy = Permissions.Dashboard.View)]
+@inject GetPortfolioDashboardHandler DashboardReader
 
-<PageTitle>Construction Project Management</PageTitle>
+<PageTitle>Dashboard</PageTitle>
 
-<h1>Construction Project Management</h1>
+@if (_dashboard is null)
+{
+    <h1>Dashboard</h1>
+    <p>Loading...</p>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <h1>Dashboard</h1>
+            <p>Portfolio overview and items that need attention.</p>
+        </div>
 
-<p>The Clean Architecture foundation is running.</p>
+        <AuthorizeView Policy="@Permissions.Projects.View">
+            <Authorized>
+                <a class="button-link" href="/projects">
+                    View projects
+                </a>
+            </Authorized>
+        </AuthorizeView>
+    </div>
 
-<section class="architecture">
-    <h2>Architecture</h2>
-    <p>Domain → Application → Infrastructure / Web, with dependencies pointing inward.</p>
-</section>
+    <section class="dashboard-grid dashboard-grid-primary"
+             aria-label="Portfolio overview">
+        <article class="metric-card">
+            <span class="metric-label">Active projects</span>
+            <strong class="metric-value">@_dashboard.ActiveProjects</strong>
+            <span class="metric-detail">@_dashboard.ClosedProjects closed</span>
+        </article>
+
+        <article class="metric-card @(_dashboard.OverdueProjects > 0 ? "metric-card-attention" : null)">
+            <span class="metric-label">Overdue projects</span>
+            <strong class="metric-value">@_dashboard.OverdueProjects</strong>
+            <span class="metric-detail">Active projects past target date</span>
+        </article>
+
+        <article class="metric-card @(_dashboard.OpenSiteIssues > 0 ? "metric-card-attention" : null)">
+            <span class="metric-label">Open site issues</span>
+            <strong class="metric-value">@_dashboard.OpenSiteIssues</strong>
+            <span class="metric-detail">Unresolved issues from daily reports</span>
+        </article>
+
+        <article class="metric-card @(_dashboard.PendingApprovalsAssignedToUser > 0 ? "metric-card-attention" : null)">
+            <span class="metric-label">My pending approvals</span>
+            <strong class="metric-value">@_dashboard.PendingApprovalsAssignedToUser</strong>
+            <AuthorizeView Policy="@Permissions.Approvals.View">
+                <Authorized>
+                    <a class="metric-link" href="/approvals">Open approval queue</a>
+                </Authorized>
+            </AuthorizeView>
+        </article>
+    </section>
+
+    <section class="dashboard-section">
+        <div class="section-heading">
+            <div>
+                <h2>Workflow attention</h2>
+                <p>Records currently waiting for action or completion.</p>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <article class="metric-card">
+                <span class="metric-label">Purchase requests</span>
+                <strong class="metric-value">@_dashboard.PendingPurchaseRequests</strong>
+                <span class="metric-detail">Pending approval</span>
+            </article>
+
+            <article class="metric-card">
+                <span class="metric-label">Purchase orders</span>
+                <strong class="metric-value">@_dashboard.PendingPurchaseOrders</strong>
+                <span class="metric-detail">Pending approval</span>
+            </article>
+
+            <article class="metric-card">
+                <span class="metric-label">Deliveries</span>
+                <strong class="metric-value">@_dashboard.DraftDeliveries</strong>
+                <span class="metric-detail">Draft receipts not yet posted</span>
+            </article>
+
+            <article class="metric-card">
+                <span class="metric-label">Payment applications</span>
+                <strong class="metric-value">@_dashboard.PendingPaymentApplications</strong>
+                <span class="metric-detail">Pending approval</span>
+            </article>
+
+            <article class="metric-card">
+                <span class="metric-label">Commercial certifications</span>
+                <strong class="metric-value">@_dashboard.PendingCommercialCertifications</strong>
+                <span class="metric-detail">Pending approval</span>
+            </article>
+        </div>
+    </section>
+
+    <section class="dashboard-section">
+        <div class="section-heading">
+            <div>
+                <h2>Active projects</h2>
+                <p>Projects nearest to their target completion date appear first.</p>
+            </div>
+        </div>
+
+        @if (_dashboard.ActiveProjectCards.Count == 0)
+        {
+            <div class="empty-state">
+                <p>No active projects.</p>
+            </div>
+        }
+        else
+        {
+            <div class="project-card-grid">
+                @foreach (var project in _dashboard.ActiveProjectCards)
+                {
+                    <article class="project-dashboard-card">
+                        <div class="project-card-heading">
+                            <div>
+                                <span class="eyebrow">@project.ProjectNumber</span>
+                                <h3>@project.Name</h3>
+                            </div>
+
+                            @if (project.IsOverdue)
+                            {
+                                <span class="status-chip status-chip-alert">
+                                    Overdue
+                                </span>
+                            }
+                        </div>
+
+                        <dl class="compact-details">
+                            <dt>Location</dt>
+                            <dd>@(project.Location ?? "—")</dd>
+
+                            <dt>Target</dt>
+                            <dd>@(project.TargetCompletionDate?.ToString("dd MMM yyyy") ?? "Not set")</dd>
+
+                            <dt>Latest daily report</dt>
+                            <dd>@(project.LatestDailyReportDate?.ToString("dd MMM yyyy") ?? "None")</dd>
+
+                            <dt>Open site issues</dt>
+                            <dd>@project.OpenSiteIssues</dd>
+
+                            <dt>Pending approvals</dt>
+                            <dd>@project.PendingApprovals</dd>
+                        </dl>
+
+                        <div class="page-actions">
+                            <a class="button-link"
+                               href="@($"/projects/{project.Id}/dashboard")">
+                                Project dashboard
+                            </a>
+
+                            <AuthorizeView Policy="@Permissions.Projects.View">
+                                <Authorized>
+                                    <a href="@($"/projects/{project.Id}")">
+                                        Project
+                                    </a>
+                                </Authorized>
+                            </AuthorizeView>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private PortfolioDashboardSnapshot? _dashboard;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _dashboard = await DashboardReader.HandleAsync();
+    }
+}

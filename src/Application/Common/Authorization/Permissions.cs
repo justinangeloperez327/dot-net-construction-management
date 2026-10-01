@@ -81,6 +81,11 @@ public static class Permissions
         public const string Cancel = "commercial_certifications.cancel";
     }
 
+    public static class Dashboard
+    {
+        public const string View = "dashboard.view";
+    }
+
     public static class Projects
     {
         public const string View = "projects.view";
@@ -163,6 +168,7 @@ public static class Permissions
         CommercialCertifications.Update,
         CommercialCertifications.Submit,
         CommercialCertifications.Cancel,
+        Dashboard.View,
         Projects.View,
         Projects.Create,
         Projects.Update,

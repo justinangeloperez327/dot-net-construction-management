@@ -1,0 +1,243 @@
+@page "/projects/{ProjectId:guid}/dashboard"
+@attribute [Authorize(Policy = Permissions.Dashboard.View)]
+@inject GetProjectDashboardHandler DashboardReader
+
+<PageTitle>Project dashboard</PageTitle>
+
+@if (_dashboard is null)
+{
+    <h1>Project not found</h1>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <span class="eyebrow">@_dashboard.ProjectNumber</span>
+            <h1>@_dashboard.Name</h1>
+            <p>@(_dashboard.Location ?? "Location not set") · @_dashboard.Status</p>
+        </div>
+
+        <div class="page-actions">
+            <AuthorizeView Policy="@Permissions.Projects.View">
+                <Authorized>
+                    <a class="button-link"
+                       href="@($"/projects/{ProjectId}")">
+                        Project
+                    </a>
+                </Authorized>
+            </AuthorizeView>
+
+            <a href="/dashboard">Portfolio dashboard</a>
+        </div>
+    </div>
+
+    <section class="dashboard-grid dashboard-grid-primary"
+             aria-label="Project health">
+        <article class="metric-card @(_dashboard.IsOverdue ? "metric-card-attention" : null)">
+            <span class="metric-label">Target completion</span>
+            <strong class="metric-value metric-value-date">
+                @(_dashboard.TargetCompletionDate?.ToString("dd MMM yyyy") ?? "Not set")
+            </strong>
+            <span class="metric-detail">@FormatTargetDetail()</span>
+        </article>
+
+        <article class="metric-card">
+            <span class="metric-label">Latest daily report</span>
+            <strong class="metric-value metric-value-date">
+                @(_dashboard.LatestDailyReportDate?.ToString("dd MMM yyyy") ?? "None")
+            </strong>
+            <span class="metric-detail">
+                @(_dashboard.LatestDailyReportStatus?.ToString() ?? "No report recorded")
+            </span>
+        </article>
+
+        <article class="metric-card @(_dashboard.OpenSiteIssues > 0 ? "metric-card-attention" : null)">
+            <span class="metric-label">Open site issues</span>
+            <strong class="metric-value">@_dashboard.OpenSiteIssues</strong>
+            <AuthorizeView Policy="@Permissions.DailyReports.View">
+                <Authorized>
+                    <a class="metric-link"
+                       href="@($"/projects/{ProjectId}/daily-reports")">
+                        Daily reports
+                    </a>
+                </Authorized>
+            </AuthorizeView>
+        </article>
+
+        <article class="metric-card @(_dashboard.PendingApprovalRequests > 0 ? "metric-card-attention" : null)">
+            <span class="metric-label">Pending approvals</span>
+            <strong class="metric-value">@_dashboard.PendingApprovalRequests</strong>
+            <span class="metric-detail">Across this project</span>
+        </article>
+    </section>
+
+    <section class="dashboard-section">
+        <div class="section-heading">
+            <div>
+                <h2>Site and document control</h2>
+                <p>Current operational records for the project.</p>
+            </div>
+        </div>
+
+        <div class="workflow-card-grid">
+            <article class="workflow-card">
+                <div class="workflow-card-heading">
+                    <h3>Daily reports</h3>
+                    <strong>@_dashboard.DailyReports.Total</strong>
+                </div>
+
+                <div class="workflow-breakdown">
+                    <span>Draft @_dashboard.DailyReports.Draft</span>
+                    <span>Submitted @_dashboard.DailyReports.Submitted</span>
+                    <span>Approved @_dashboard.DailyReports.Approved</span>
+                    <span>Rejected @_dashboard.DailyReports.Rejected</span>
+                </div>
+
+                <AuthorizeView Policy="@Permissions.DailyReports.View">
+                    <Authorized>
+                        <a href="@($"/projects/{ProjectId}/daily-reports")">
+                            Open daily reports
+                        </a>
+                    </Authorized>
+                </AuthorizeView>
+            </article>
+
+            <article class="workflow-card">
+                <div class="workflow-card-heading">
+                    <h3>Documents</h3>
+                    <strong>@_dashboard.Documents.Total</strong>
+                </div>
+
+                <div class="workflow-breakdown">
+                    <span>Active @_dashboard.Documents.Active</span>
+                    <span>Archived @_dashboard.Documents.Archived</span>
+                </div>
+
+                <AuthorizeView Policy="@Permissions.Documents.View">
+                    <Authorized>
+                        <a href="@($"/projects/{ProjectId}/documents")">
+                            Open documents
+                        </a>
+                    </Authorized>
+                </AuthorizeView>
+            </article>
+        </div>
+    </section>
+
+    <section class="dashboard-section">
+        <div class="section-heading">
+            <div>
+                <h2>Procurement and commercial</h2>
+                <p>Status of the project’s procurement-to-payment workflow.</p>
+            </div>
+        </div>
+
+        <div class="workflow-card-grid">
+            @WorkflowCard(
+                "Purchase requests",
+                _dashboard.PurchaseRequests,
+                $"/projects/{ProjectId}/purchase-requests",
+                Permissions.PurchaseRequests.View)
+
+            @WorkflowCard(
+                "Purchase orders",
+                _dashboard.PurchaseOrders,
+                $"/projects/{ProjectId}/purchase-orders",
+                Permissions.PurchaseOrders.View)
+
+            <article class="workflow-card">
+                <div class="workflow-card-heading">
+                    <h3>Deliveries</h3>
+                    <strong>@_dashboard.Deliveries.Total</strong>
+                </div>
+
+                <div class="workflow-breakdown">
+                    <span>Draft @_dashboard.Deliveries.Draft</span>
+                    <span>Received @_dashboard.Deliveries.Received</span>
+                    <span>Cancelled @_dashboard.Deliveries.Cancelled</span>
+                </div>
+
+                <AuthorizeView Policy="@Permissions.Deliveries.View">
+                    <Authorized>
+                        <a href="@($"/projects/{ProjectId}/deliveries")">
+                            Open deliveries
+                        </a>
+                    </Authorized>
+                </AuthorizeView>
+            </article>
+
+            @WorkflowCard(
+                "Payment applications",
+                _dashboard.PaymentApplications,
+                $"/projects/{ProjectId}/payment-applications",
+                Permissions.PaymentApplications.View)
+
+            @WorkflowCard(
+                "Commercial certifications",
+                _dashboard.CommercialCertifications,
+                $"/projects/{ProjectId}/commercial-certifications",
+                Permissions.CommercialCertifications.View)
+        </div>
+    </section>
+}
+
+@code {
+    [Parameter]
+    public Guid ProjectId { get; set; }
+
+    private ProjectDashboardSnapshot? _dashboard;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _dashboard = await DashboardReader.HandleAsync(ProjectId);
+    }
+
+    private string FormatTargetDetail()
+    {
+        if (_dashboard?.TargetCompletionDate is null)
+        {
+            return "No target completion date";
+        }
+
+        if (_dashboard.Status == ProjectStatus.Closed)
+        {
+            return "Project closed";
+        }
+
+        return _dashboard.DaysToTarget switch
+        {
+            < 0 => $"{Math.Abs(_dashboard.DaysToTarget.Value)} days overdue",
+            0 => "Due today",
+            > 0 => $"{_dashboard.DaysToTarget.Value} days remaining",
+            _ => "—"
+        };
+    }
+
+    private RenderFragment WorkflowCard(
+        string title,
+        ApprovalWorkflowCounts counts,
+        string href,
+        string policy) => builder =>
+    {
+        <article class="workflow-card">
+            <div class="workflow-card-heading">
+                <h3>@title</h3>
+                <strong>@counts.Total</strong>
+            </div>
+
+            <div class="workflow-breakdown">
+                <span>Draft @counts.Draft</span>
+                <span>Pending @counts.PendingApproval</span>
+                <span>Approved @counts.Approved</span>
+                <span>Rejected @counts.Rejected</span>
+                <span>Cancelled @counts.Cancelled</span>
+            </div>
+
+            <AuthorizeView Policy="@policy">
+                <Authorized>
+                    <a href="@href">Open @title.ToLowerInvariant()</a>
+                </Authorized>
+            </AuthorizeView>
+        </article>
+    };
+}
