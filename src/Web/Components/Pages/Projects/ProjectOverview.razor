@@ -28,6 +28,15 @@ else
                 </Authorized>
             </AuthorizeView>
 
+            <AuthorizeView Policy="@Permissions.Reports.View">
+                <Authorized>
+                    <a class="button-link"
+                       href="@($"/reports?projectId={Id}")">
+                        Reports
+                    </a>
+                </Authorized>
+            </AuthorizeView>
+
             <AuthorizeView Policy="@Permissions.DailyReports.View">
                 <Authorized>
                     <a class="button-link"

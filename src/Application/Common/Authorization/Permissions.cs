@@ -86,6 +86,12 @@ public static class Permissions
         public const string View = "dashboard.view";
     }
 
+    public static class Reports
+    {
+        public const string View = "reports.view";
+        public const string Export = "reports.export";
+    }
+
     public static class Projects
     {
         public const string View = "projects.view";
@@ -169,6 +175,8 @@ public static class Permissions
         CommercialCertifications.Submit,
         CommercialCertifications.Cancel,
         Dashboard.View,
+        Reports.View,
+        Reports.Export,
         Projects.View,
         Projects.Create,
         Projects.Update,

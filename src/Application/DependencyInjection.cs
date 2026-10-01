@@ -7,6 +7,7 @@ using Application.Deliveries;
 using Application.Documents;
 using Application.PaymentApplications;
 using Application.Projects;
+using Application.Reporting;
 using Application.PurchaseOrders;
 using Application.PurchaseRequests;
 using Application.Suppliers;
@@ -156,6 +157,13 @@ public static class DependencyInjection
 
         services.AddScoped<GetPortfolioDashboardHandler>();
         services.AddScoped<GetProjectDashboardHandler>();
+
+        services.AddScoped<GetReportingProjectsHandler>();
+        services.AddScoped<GetPortfolioReportHandler>();
+        services.AddScoped<GetDailySiteReportHandler>();
+        services.AddScoped<GetProcurementReportHandler>();
+        services.AddScoped<GetCommercialReportHandler>();
+        services.AddScoped<ExportReportCsvHandler>();
 
         return services;
     }

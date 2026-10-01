@@ -1,0 +1,532 @@
+@page "/reports"
+@attribute [Authorize(Policy = Permissions.Reports.View)]
+@inject GetReportingProjectsHandler ProjectList
+@inject GetPortfolioReportHandler PortfolioReader
+@inject GetDailySiteReportHandler DailySiteReader
+@inject GetProcurementReportHandler ProcurementReader
+@inject GetCommercialReportHandler CommercialReader
+
+<PageTitle>Reports</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <h1>Reports</h1>
+        <p>
+            Historical operational and commercial registers generated from
+            live project data.
+        </p>
+    </div>
+
+    <a href="/dashboard">Dashboard</a>
+</div>
+
+<section class="report-filter-panel">
+    <div class="report-filter-grid">
+        <div>
+            <label for="report-project">Project</label>
+            <select id="report-project" @bind="_selectedProjectId">
+                <option value="">All projects</option>
+                @foreach (var project in _projects)
+                {
+                    <option value="@project.Id">
+                        @project.ProjectNumber · @project.Name
+                    </option>
+                }
+            </select>
+        </div>
+
+        <div>
+            <label for="report-from">From date</label>
+            <InputDate id="report-from"
+                       @bind-Value="_fromDate" />
+        </div>
+
+        <div>
+            <label for="report-to">To date</label>
+            <InputDate id="report-to"
+                       @bind-Value="_toDate" />
+        </div>
+    </div>
+
+    <div class="page-actions">
+        <button type="button"
+                @onclick="ApplyFiltersAsync">
+            Apply filters
+        </button>
+
+        <button type="button"
+                class="secondary-button"
+                @onclick="ClearFiltersAsync">
+            Clear
+        </button>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_filterError))
+    {
+        <p class="validation-error">@_filterError</p>
+    }
+
+    <p class="report-filter-note">
+        Date filters apply to Daily Site, Procurement, and Commercial reports.
+        Portfolio is a current project register.
+    </p>
+</section>
+
+@if (_loading)
+{
+    <p>Loading reports...</p>
+}
+else
+{
+    <section class="report-section">
+        <div class="report-section-heading">
+            <div>
+                <h2>Project portfolio</h2>
+                <p>@ReportCount(_portfolio)</p>
+            </div>
+
+            <AuthorizeView Policy="@Permissions.Reports.Export">
+                <Authorized>
+                    <a class="button-link"
+                       href="@BuildExportUrl(ReportKind.Portfolio)">
+                        Export CSV
+                    </a>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+
+        @if (_portfolio?.Items.Count == 0)
+        {
+            <p>No projects match the current filter.</p>
+        }
+        else if (_portfolio is not null)
+        {
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Project</th>
+                            <th>Client</th>
+                            <th>Location</th>
+                            <th>Status</th>
+                            <th>Start</th>
+                            <th>Target</th>
+                            <th>Latest daily report</th>
+                            <th>Open issues</th>
+                            <th>Pending approvals</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in _portfolio.Items)
+                        {
+                            <tr>
+                                <td>
+                                    <a href="@($"/projects/{row.ProjectId}")">
+                                        @row.ProjectNumber
+                                    </a>
+                                    <div class="table-secondary">
+                                        @row.ProjectName
+                                    </div>
+                                </td>
+                                <td>@(row.ClientName ?? "—")</td>
+                                <td>@(row.Location ?? "—")</td>
+                                <td>@row.Status</td>
+                                <td>@row.StartDate.ToString("dd MMM yyyy")</td>
+                                <td>@(row.TargetCompletionDate?.ToString("dd MMM yyyy") ?? "—")</td>
+                                <td>@(row.LatestDailyReportDate?.ToString("dd MMM yyyy") ?? "—")</td>
+                                <td>@row.OpenSiteIssues</td>
+                                <td>@row.PendingApprovals</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    <section class="report-section">
+        <div class="report-section-heading">
+            <div>
+                <h2>Daily site register</h2>
+                <p>@ReportCount(_dailySite)</p>
+            </div>
+
+            <AuthorizeView Policy="@Permissions.Reports.Export">
+                <Authorized>
+                    <a class="button-link"
+                       href="@BuildExportUrl(ReportKind.DailySite)">
+                        Export CSV
+                    </a>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+
+        @if (_dailySite?.Items.Count == 0)
+        {
+            <p>No daily reports match the current filter.</p>
+        }
+        else if (_dailySite is not null)
+        {
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Project</th>
+                            <th>Status</th>
+                            <th>Prepared by</th>
+                            <th>Weather</th>
+                            <th>Activities</th>
+                            <th>Manpower</th>
+                            <th>Equipment</th>
+                            <th>Open issues</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in _dailySite.Items)
+                        {
+                            <tr>
+                                <td>
+                                    <a href="@($"/daily-reports/{row.ReportId}")">
+                                        @row.ReportDate.ToString("dd MMM yyyy")
+                                    </a>
+                                </td>
+                                <td>
+                                    @row.ProjectNumber
+                                    <div class="table-secondary">
+                                        @row.ProjectName
+                                    </div>
+                                </td>
+                                <td>@row.Status</td>
+                                <td>@row.PreparedBy</td>
+                                <td>@(row.Weather ?? "—")</td>
+                                <td>@row.ActivityCount</td>
+                                <td>@row.ManpowerHeadcount</td>
+                                <td>@row.EquipmentQuantity</td>
+                                <td>@row.OpenSiteIssues</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    <section class="report-section">
+        <div class="report-section-heading">
+            <div>
+                <h2>Procurement register</h2>
+                <p>@ReportCount(_procurement)</p>
+            </div>
+
+            <AuthorizeView Policy="@Permissions.Reports.Export">
+                <Authorized>
+                    <a class="button-link"
+                       href="@BuildExportUrl(ReportKind.Procurement)">
+                        Export CSV
+                    </a>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+
+        @if (_procurement?.Items.Count == 0)
+        {
+            <p>No purchase orders match the current filter.</p>
+        }
+        else if (_procurement is not null)
+        {
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>PO</th>
+                            <th>Project</th>
+                            <th>PR</th>
+                            <th>Supplier</th>
+                            <th>Status</th>
+                            <th>Order date</th>
+                            <th>Expected delivery</th>
+                            <th>Total</th>
+                            <th>Received deliveries</th>
+                            <th>Latest delivery</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in _procurement.Items)
+                        {
+                            <tr>
+                                <td>
+                                    <a href="@($"/purchase-orders/{row.PurchaseOrderId}")">
+                                        @row.PurchaseOrderNumber
+                                    </a>
+                                </td>
+                                <td>
+                                    @row.ProjectNumber
+                                    <div class="table-secondary">
+                                        @row.ProjectName
+                                    </div>
+                                </td>
+                                <td>@row.PurchaseRequestNumber</td>
+                                <td>@row.SupplierName</td>
+                                <td>@row.Status</td>
+                                <td>@row.OrderDate.ToString("dd MMM yyyy")</td>
+                                <td>@(row.ExpectedDeliveryDate?.ToString("dd MMM yyyy") ?? "—")</td>
+                                <td>@row.Currency @row.PurchaseOrderTotal.ToString("N2")</td>
+                                <td>@row.DeliveryCount</td>
+                                <td>@(row.LatestDeliveryDate?.ToString("dd MMM yyyy") ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    <section class="report-section">
+        <div class="report-section-heading">
+            <div>
+                <h2>Commercial register</h2>
+                <p>@ReportCount(_commercial)</p>
+            </div>
+
+            <AuthorizeView Policy="@Permissions.Reports.Export">
+                <Authorized>
+                    <a class="button-link"
+                       href="@BuildExportUrl(ReportKind.Commercial)">
+                        Export CSV
+                    </a>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+
+        @if (_commercial?.Items.Count == 0)
+        {
+            <p>No payment applications match the current filter.</p>
+        }
+        else if (_commercial is not null)
+        {
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Payment application</th>
+                            <th>Project</th>
+                            <th>PO / Supplier</th>
+                            <th>Application date</th>
+                            <th>Status</th>
+                            <th>Claimed</th>
+                            <th>Certification</th>
+                            <th>Certified</th>
+                            <th>Payable</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in _commercial.Items)
+                        {
+                            <tr>
+                                <td>
+                                    <a href="@($"/payment-applications/{row.PaymentApplicationId}")">
+                                        @row.ApplicationNumber
+                                    </a>
+                                </td>
+                                <td>
+                                    @row.ProjectNumber
+                                    <div class="table-secondary">
+                                        @row.ProjectName
+                                    </div>
+                                </td>
+                                <td>
+                                    @row.PurchaseOrderNumber
+                                    <div class="table-secondary">
+                                        @row.SupplierName
+                                    </div>
+                                </td>
+                                <td>@row.ApplicationDate.ToString("dd MMM yyyy")</td>
+                                <td>@FormatStatus(row.ApplicationStatus)</td>
+                                <td>@row.Currency @row.ClaimedAmount.ToString("N2")</td>
+                                <td>
+                                    @if (row.CertificateNumber is null)
+                                    {
+                                        <span>—</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@row.CertificateNumber</span>
+                                        <div class="table-secondary">
+                                            @(row.CertificationStatus is null
+                                                ? "—"
+                                                : FormatStatus(row.CertificationStatus.Value))
+                                        </div>
+                                    }
+                                </td>
+                                <td>@FormatMoney(row.Currency, row.CertifiedAmount)</td>
+                                <td>@FormatMoney(row.Currency, row.PayableAmount)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "projectId")]
+    public Guid? ProjectId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "from")]
+    public DateOnly? From { get; set; }
+
+    [SupplyParameterFromQuery(Name = "to")]
+    public DateOnly? To { get; set; }
+
+    private IReadOnlyList<ReportProjectOption> _projects = [];
+    private Guid? _selectedProjectId;
+    private DateOnly? _fromDate;
+    private DateOnly? _toDate;
+    private string? _filterError;
+    private bool _loading = true;
+
+    private ReportResult<PortfolioReportRow>? _portfolio;
+    private ReportResult<DailySiteReportRow>? _dailySite;
+    private ReportResult<ProcurementReportRow>? _procurement;
+    private ReportResult<CommercialReportRow>? _commercial;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _selectedProjectId = ProjectId;
+        _fromDate = From;
+        _toDate = To;
+
+        if (_projects.Count == 0)
+        {
+            _projects = await ProjectList.HandleAsync();
+        }
+
+        await LoadReportsAsync();
+    }
+
+    private async Task ApplyFiltersAsync()
+    {
+        await LoadReportsAsync();
+    }
+
+    private async Task ClearFiltersAsync()
+    {
+        _selectedProjectId = null;
+        _fromDate = null;
+        _toDate = null;
+        _filterError = null;
+
+        await LoadReportsAsync();
+    }
+
+    private async Task LoadReportsAsync()
+    {
+        _filterError = null;
+
+        if (_fromDate is not null &&
+            _toDate is not null &&
+            _toDate < _fromDate)
+        {
+            _filterError =
+                "The report end date cannot be before the start date.";
+            return;
+        }
+
+        _loading = true;
+
+        var filter = CurrentFilter();
+
+        var portfolioTask = PortfolioReader.HandleAsync(filter);
+        var dailyTask = DailySiteReader.HandleAsync(filter);
+        var procurementTask = ProcurementReader.HandleAsync(filter);
+        var commercialTask = CommercialReader.HandleAsync(filter);
+
+        await Task.WhenAll(
+            portfolioTask,
+            dailyTask,
+            procurementTask,
+            commercialTask);
+
+        _portfolio = await portfolioTask;
+        _dailySite = await dailyTask;
+        _procurement = await procurementTask;
+        _commercial = await commercialTask;
+
+        _loading = false;
+    }
+
+    private ReportingFilter CurrentFilter() =>
+        new(
+            _selectedProjectId,
+            _fromDate,
+            _toDate);
+
+    private string BuildExportUrl(ReportKind report)
+    {
+        var query = new List<string>();
+
+        if (_selectedProjectId is Guid projectId)
+        {
+            query.Add($"projectId={projectId}");
+        }
+
+        if (_fromDate is DateOnly from)
+        {
+            query.Add($"from={from:yyyy-MM-dd}");
+        }
+
+        if (_toDate is DateOnly to)
+        {
+            query.Add($"to={to:yyyy-MM-dd}");
+        }
+
+        var suffix = query.Count == 0
+            ? string.Empty
+            : "?" + string.Join("&", query);
+
+        return $"/reports/export/{report}{suffix}";
+    }
+
+    private static string ReportCount<T>(
+        ReportResult<T>? report)
+    {
+        if (report is null)
+        {
+            return string.Empty;
+        }
+
+        return report.IsTruncated
+            ? $"Showing {report.Items.Count:N0} of {report.TotalCount:N0} rows. Export CSV for the full filtered result."
+            : $"{report.TotalCount:N0} rows";
+    }
+
+    private static string FormatStatus<TStatus>(TStatus status)
+        where TStatus : struct, Enum
+    {
+        var value = status.ToString();
+        var result = new System.Text.StringBuilder();
+
+        for (var index = 0; index < value.Length; index++)
+        {
+            if (index > 0 &&
+                char.IsUpper(value[index]) &&
+                !char.IsUpper(value[index - 1]))
+            {
+                result.Append(' ');
+            }
+
+            result.Append(value[index]);
+        }
+
+        return result.ToString();
+    }
+
+    private static string FormatMoney(
+        string currency,
+        decimal? amount) =>
+        amount is null
+            ? "—"
+            : $"{currency} {amount.Value:N2}";
+}

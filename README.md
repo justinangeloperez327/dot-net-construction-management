@@ -4,41 +4,36 @@ A deployable construction project management application built with .NET 10 and 
 
 ## Current milestone
 
-Group 19 — Dashboard
+Group 20 — Reporting
 
-The application now provides live portfolio and project dashboards over the existing construction-management workflows.
+The application now provides historical, filterable project reporting and CSV exports.
 
-Portfolio dashboard:
+Report workspace:
 
-- active / closed / overdue projects
-- open site issues
-- the signed-in user's pending approval steps
-- Purchase Requests pending approval
-- Purchase Orders pending approval
-- draft Deliveries
-- Payment Applications pending approval
-- Commercial Certifications pending approval
-- active-project attention cards
+- Project Portfolio
+- Daily Site Register
+- Procurement Register
+- Commercial Register
 
-Project dashboard:
+Filters:
 
-- target completion and overdue state
-- latest Daily Report
-- open site issues
-- pending project approvals
-- Daily Report status counts
-- Document status counts
-- Purchase Request status counts
-- Purchase Order status counts
-- Delivery status counts
-- Payment Application status counts
-- Commercial Certification status counts
+- Project
+- From Date
+- To Date
 
-The dashboard uses a dedicated EF Core read-model service instead of forcing analytical queries through transactional repositories.
+CSV exports:
 
-Group 19 adds no database tables or migration.
+- use the same reporting read models as the UI
+- export the complete filtered dataset
+- use UTF-8 BOM for Excel compatibility
+- use invariant dates and decimals
+- correctly escape commas, quotes, and line breaks
 
-See docs/dashboard.md.
+On-screen report tables are limited to 200 rows to avoid unbounded Blazor rendering. When more rows exist, the UI directs the user to the full CSV export.
+
+Reporting uses a dedicated Application read contract and EF Core read service. No reporting state is persisted and Group 20 adds no database migration.
+
+See docs/reporting.md.
 
 ## Build
 
