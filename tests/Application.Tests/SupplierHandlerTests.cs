@@ -90,6 +90,11 @@ public sealed class SupplierHandlerTests
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<Supplier>>([]);
 
+        public Task<IReadOnlyList<Supplier>> ListByIdsAsync(
+            IReadOnlyCollection<Guid> supplierIds,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<Supplier>>([]);
+
         public Task<int> CountAsync(
             string? search,
             bool? isActive,

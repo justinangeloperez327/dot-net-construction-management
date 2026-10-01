@@ -23,6 +23,10 @@ public interface ISupplierRepository
     Task<IReadOnlyList<Supplier>> ListActiveAsync(
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Supplier>> ListByIdsAsync(
+        IReadOnlyCollection<Guid> supplierIds,
+        CancellationToken cancellationToken = default);
+
     Task<int> CountAsync(
         string? search,
         bool? isActive,
