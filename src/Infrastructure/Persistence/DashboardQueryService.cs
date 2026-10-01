@@ -357,7 +357,7 @@ public sealed class DashboardQueryService(
                 cancellationToken);
 
         var targetDate = project.TargetCompletionDate;
-        var daysToTarget = targetDate is null
+        int? daysToTarget = targetDate is null
             ? null
             : targetDate.Value.DayNumber - today.DayNumber;
 
