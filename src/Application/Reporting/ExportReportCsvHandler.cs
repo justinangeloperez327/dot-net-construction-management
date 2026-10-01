@@ -221,9 +221,16 @@ public sealed class ExportReportCsvHandler(
                 string.Join(",", row.Select(Escape)));
         }
 
+        var body = Utf8WithBom.GetBytes(builder.ToString());
+        var preamble = Utf8WithBom.GetPreamble();
+        var content = new byte[preamble.Length + body.Length];
+
+        preamble.CopyTo(content, 0);
+        body.CopyTo(content, preamble.Length);
+
         return new ReportCsvDocument(
             fileName,
-            Utf8WithBom.GetBytes(builder.ToString()));
+            content);
     }
 
     private static string Escape(string? value)

@@ -22,7 +22,8 @@ public sealed class ReportingTests
             new ReportingFilter(
                 Guid.NewGuid(),
                 new DateOnly(2026, 9, 1),
-                new DateOnly(2026, 9, 30)));
+                new DateOnly(2026, 9, 30)),
+            TestContext.Current.CancellationToken);
 
         Assert.Null(service.DailySiteLimit);
     }
@@ -54,7 +55,8 @@ public sealed class ReportingTests
 
         var file = await handler.HandleAsync(
             ReportKind.DailySite,
-            new ReportingFilter());
+            new ReportingFilter(),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal("daily-site-register.csv", file.FileName);
         Assert.True(file.Content.Length > 3);
