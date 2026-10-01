@@ -1,6 +1,7 @@
 using Application.Approvals;
 using Application.Clients;
 using Application.DailyReports;
+using Application.Deliveries;
 using Application.Documents;
 using Application.Projects;
 using Application.PurchaseOrders;
@@ -109,6 +110,17 @@ public static class DependencyInjection
         services.AddScoped<
             IApprovalSubjectOutcomeHandler,
             PurchaseOrderApprovalOutcomeHandler>();
+
+        services.AddScoped<CreateDeliveryHandler>();
+        services.AddScoped<UpdateDeliveryHandler>();
+        services.AddScoped<AddDeliveryItemHandler>();
+        services.AddScoped<UpdateDeliveryItemHandler>();
+        services.AddScoped<RemoveDeliveryItemHandler>();
+        services.AddScoped<ReceiveDeliveryHandler>();
+        services.AddScoped<CancelDeliveryHandler>();
+        services.AddScoped<GetDeliveryHandler>();
+        services.AddScoped<ListDeliveriesHandler>();
+        services.AddScoped<ListAvailableDeliveryItemsHandler>();
 
         return services;
     }

@@ -4,35 +4,30 @@ A deployable construction project management application built with .NET 10 and 
 
 ## Current milestone
 
-Group 15 — Purchase Orders
+Group 16 — Deliveries
 
-The application now supports commercial Purchase Orders created from approved Purchase Requests.
+The application now supports partial delivery receiving against approved Purchase Orders.
 
-Purchase Orders include:
+Deliveries include:
 
-- company-wide unique PO number
-- approved source Purchase Request
-- active Supplier
-- order and expected-delivery dates
-- three-letter currency code
-- delivery address and delivery terms
-- payment terms
-- notes
-- source-linked PO lines
-- quantities
-- unit prices
-- line discounts
-- line taxes
-- derived commercial totals
-- Draft / Pending Approval / Approved / Rejected / Cancelled lifecycle
-- reusable Group 12 approval integration
-- split-award quantity controls
-- project closure protection
-- project PO register and detail workflow
+- supplier delivery note number
+- delivery date
+- optional vehicle / transport reference
+- remarks
+- creator and creation timestamp
+- Draft / Received / Cancelled lifecycle
+- selected Purchase Order lines
+- actual delivered quantities
+- cumulative received-quantity protection
+- receiving user and timestamp
+- immutable posted receipts
+- project delivery register
+- approved-PO delivery creation workflow
 - SQL Server persistence
-- Domain and integration tests
 
-A source PR may create more than one PO. At submission, quantities already present in Pending Approval or Approved POs are counted so combined supplier awards cannot exceed the approved PR line quantity.
+Multiple deliveries can fulfill one PO line. Only Received deliveries consume the ordered quantity. Draft receipts do not reserve quantity.
+
+Once a delivery is Received it is immutable in Group 16. Reversals, returns, rejected materials, warehouse stock, quality inspections, and invoice matching require explicit later workflows and are not simulated by editing historical receipts.
 
 ## Build
 
@@ -45,7 +40,7 @@ dotnet test CPM.slnx --configuration Release --no-build
 
 Apply database migrations explicitly with dotnet ef database update using Infrastructure as the migration project and Web as the startup project.
 
-See docs/purchase-orders.md.
+See docs/deliveries.md.
 
 ## Planned development order
 

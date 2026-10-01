@@ -38,6 +38,19 @@ else
                 </a>
             }
 
+            @if (_order.Status == PurchaseOrderStatus.Approved &&
+                 _project?.Status == ProjectStatus.Active)
+            {
+                <AuthorizeView Policy="@Permissions.Deliveries.Create">
+                    <Authorized>
+                        <a class="button-link"
+                           href="@($"/purchase-orders/{Id}/deliveries/create")">
+                            Record delivery
+                        </a>
+                    </Authorized>
+                </AuthorizeView>
+            }
+
             <a href="@($"/projects/{_order.ProjectId}/purchase-orders")">
                 Back to purchase orders
             </a>

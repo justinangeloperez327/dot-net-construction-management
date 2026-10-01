@@ -1,0 +1,158 @@
+@page "/projects/{ProjectId:guid}/deliveries"
+@attribute [Authorize(Policy = Permissions.Deliveries.View)]
+@inject GetProjectHandler ProjectReader
+@inject ListDeliveriesHandler DeliveryList
+
+<PageTitle>Deliveries</PageTitle>
+
+@if (_project is null)
+{
+    <h1>Project not found</h1>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <h1>Deliveries</h1>
+            <p>@_project.ProjectNumber · @_project.Name</p>
+        </div>
+
+        <a href="@($"/projects/{ProjectId}/purchase-orders")">
+            Purchase orders
+        </a>
+    </div>
+
+    <div class="filter-bar">
+        <select @bind="_status">
+            <option value="">All statuses</option>
+            @foreach (var status in Enum.GetValues<DeliveryStatus>())
+            {
+                <option value="@status">@status</option>
+            }
+        </select>
+
+        <button type="button" @onclick="ApplyFilterAsync">
+            Filter
+        </button>
+    </div>
+
+    @if (_result is null)
+    {
+        <p>Loading...</p>
+    }
+    else if (_result.Items.Count == 0)
+    {
+        <p>No deliveries found.</p>
+    }
+    else
+    {
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Delivery note</th>
+                    <th>PO</th>
+                    <th>Supplier</th>
+                    <th>Delivery date</th>
+                    <th>Items</th>
+                    <th>Status</th>
+                    <th>Received by</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var delivery in _result.Items)
+                {
+                    <tr>
+                        <td>@delivery.DeliveryNoteNumber</td>
+                        <td>@delivery.PurchaseOrderNumber</td>
+                        <td>@delivery.SupplierName</td>
+                        <td>@delivery.DeliveryDate.ToString("dd MMM yyyy")</td>
+                        <td>@delivery.ItemCount</td>
+                        <td>@delivery.Status</td>
+                        <td>@(delivery.ReceivedBy ?? "—")</td>
+                        <td>
+                            <a href="@($"/deliveries/{delivery.Id}")">
+                                View
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="pagination">
+            <button type="button"
+                    disabled="@(_result.Page <= 1)"
+                    @onclick="PreviousPageAsync">
+                Previous
+            </button>
+
+            <span>
+                Page @_result.Page of @_result.TotalPages
+                · @_result.TotalCount total
+            </span>
+
+            <button type="button"
+                    disabled="@(_result.Page >= _result.TotalPages)"
+                    @onclick="NextPageAsync">
+                Next
+            </button>
+        </div>
+    }
+}
+
+@code {
+    [Parameter]
+    public Guid ProjectId { get; set; }
+
+    private Application.Projects.ProjectDetails? _project;
+    private DeliveryListResult? _result;
+    private string _status = string.Empty;
+    private int _page = 1;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _project = await ProjectReader.HandleAsync(ProjectId);
+        await LoadAsync();
+    }
+
+    private async Task ApplyFilterAsync()
+    {
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        _page = Math.Max(1, _page - 1);
+        await LoadAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (_result is null)
+        {
+            return;
+        }
+
+        _page = Math.Min(_result.TotalPages, _page + 1);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        DeliveryStatus? status =
+            Enum.TryParse<DeliveryStatus>(
+                _status,
+                ignoreCase: true,
+                out var parsed)
+                ? parsed
+                : null;
+
+        _result = await DeliveryList.HandleAsync(
+            new ListDeliveriesQuery(
+                ProjectId,
+                status,
+                _page));
+    }
+}

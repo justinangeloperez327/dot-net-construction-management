@@ -54,6 +54,15 @@ public static class Permissions
         public const string Cancel = "purchase_orders.cancel";
     }
 
+    public static class Deliveries
+    {
+        public const string View = "deliveries.view";
+        public const string Create = "deliveries.create";
+        public const string Update = "deliveries.update";
+        public const string Receive = "deliveries.receive";
+        public const string Cancel = "deliveries.cancel";
+    }
+
     public static class Projects
     {
         public const string View = "projects.view";
@@ -121,6 +130,11 @@ public static class Permissions
         PurchaseOrders.Update,
         PurchaseOrders.Submit,
         PurchaseOrders.Cancel,
+        Deliveries.View,
+        Deliveries.Create,
+        Deliveries.Update,
+        Deliveries.Receive,
+        Deliveries.Cancel,
         Projects.View,
         Projects.Create,
         Projects.Update,

@@ -1,0 +1,496 @@
+@page "/deliveries/{Id:guid}"
+@attribute [Authorize(Policy = Permissions.Deliveries.View)]
+@inject GetDeliveryHandler DeliveryReader
+@inject GetProjectHandler ProjectReader
+@inject UpdateDeliveryHandler DeliveryUpdater
+@inject AddDeliveryItemHandler ItemAdder
+@inject UpdateDeliveryItemHandler ItemUpdater
+@inject RemoveDeliveryItemHandler ItemRemover
+@inject ReceiveDeliveryHandler DeliveryReceiver
+@inject CancelDeliveryHandler DeliveryCanceller
+@inject ListAvailableDeliveryItemsHandler AvailableItems
+
+<PageTitle>Delivery</PageTitle>
+
+@if (_delivery is null)
+{
+    <h1>Delivery not found</h1>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <h1>@_delivery.DeliveryNoteNumber</h1>
+            <p>@_delivery.PurchaseOrderNumber · @_delivery.SupplierName · @_delivery.Status</p>
+        </div>
+
+        <div class="page-actions">
+            <a class="button-link"
+               href="@($"/purchase-orders/{_delivery.PurchaseOrderId}")">
+                Purchase order
+            </a>
+
+            <a href="@($"/projects/{_delivery.ProjectId}/deliveries")">
+                Back to deliveries
+            </a>
+        </div>
+    </div>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_message))
+    {
+        <p class="success-message">@_message</p>
+    }
+
+    <dl class="details-grid">
+        <dt>Status</dt>
+        <dd>@_delivery.Status</dd>
+
+        <dt>Delivery date</dt>
+        <dd>@_delivery.DeliveryDate.ToString("dd MMM yyyy")</dd>
+
+        <dt>Vehicle / transport</dt>
+        <dd>@(_delivery.VehicleReference ?? "—")</dd>
+
+        <dt>Created by</dt>
+        <dd>@_delivery.CreatedBy</dd>
+
+        <dt>Created</dt>
+        <dd>@_delivery.CreatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")</dd>
+
+        <dt>Received by</dt>
+        <dd>@(_delivery.ReceivedBy ?? "—")</dd>
+
+        <dt>Received</dt>
+        <dd>@(_delivery.ReceivedAt?.ToLocalTime().ToString("dd MMM yyyy HH:mm") ?? "—")</dd>
+
+        <dt>Remarks</dt>
+        <dd>@(_delivery.Remarks ?? "—")</dd>
+    </dl>
+
+    @if (IsEditable)
+    {
+        <AuthorizeView Policy="@Permissions.Deliveries.Update">
+            <Authorized Context="authorizationState">
+                <section class="form-section">
+                    <h2>Edit delivery</h2>
+
+                    <EditForm Model="_header"
+                              OnValidSubmit="SaveHeaderAsync"
+                              class="form-grid"
+                              Context="deliveryHeaderContext">
+                        <DataAnnotationsValidator />
+
+                        <label for="delivery-note">Delivery note number</label>
+                        <InputText id="delivery-note"
+                                   @bind-Value="_header.DeliveryNoteNumber" />
+                        <ValidationMessage For="() => _header.DeliveryNoteNumber" />
+
+                        <label for="delivery-date">Delivery date</label>
+                        <InputDate id="delivery-date"
+                                   @bind-Value="_header.DeliveryDate" />
+
+                        <label for="vehicle-reference">Vehicle / transport reference</label>
+                        <InputText id="vehicle-reference"
+                                   @bind-Value="_header.VehicleReference" />
+
+                        <label for="remarks">Remarks</label>
+                        <InputTextArea id="remarks"
+                                       @bind-Value="_header.Remarks" />
+
+                        <button type="submit">Save delivery</button>
+                    </EditForm>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+
+    <section class="form-section">
+        <h2>Delivered items</h2>
+
+        @if (_delivery.Items.Count == 0)
+        {
+            <p>No items added to this delivery.</p>
+        }
+        else
+        {
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th>Ordered</th>
+                        <th>Previously received</th>
+                        <th>This delivery</th>
+                        <th>Remaining</th>
+                        <th>Unit</th>
+                        <th>Remarks</th>
+                        @if (IsEditable)
+                        {
+                            <th></th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in _delivery.Items)
+                    {
+                        <tr>
+                            <td>@item.Description</td>
+                            <td>@item.OrderedQuantity</td>
+                            <td>@item.PreviouslyReceivedQuantity</td>
+                            <td>@item.Quantity</td>
+                            <td>@item.RemainingAfterDelivery</td>
+                            <td>@item.Unit</td>
+                            <td>@(item.Remarks ?? "—")</td>
+                            @if (IsEditable)
+                            {
+                                <td>
+                                    <AuthorizeView Policy="@Permissions.Deliveries.Update">
+                                        <Authorized>
+                                            <button type="button"
+                                                    @onclick="() => BeginEditItem(item)">
+                                                Edit
+                                            </button>
+                                            <button type="button"
+                                                    class="danger-button"
+                                                    @onclick="() => RemoveItemAsync(item.Id)">
+                                                Remove
+                                            </button>
+                                        </Authorized>
+                                    </AuthorizeView>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        @if (IsEditable)
+        {
+            <AuthorizeView Policy="@Permissions.Deliveries.Update">
+                <Authorized Context="authorizationState">
+                    @if (_editingItemId is Guid)
+                    {
+                        <h3>Edit received quantity</h3>
+
+                        <EditForm Model="_item"
+                                  OnValidSubmit="SaveItemAsync"
+                                  class="form-grid"
+                                  Context="deliveryItemEditContext">
+                            <DataAnnotationsValidator />
+
+                            <label for="quantity">Quantity</label>
+                            <InputNumber id="quantity"
+                                         @bind-Value="_item.Quantity" />
+
+                            <label for="item-remarks">Remarks</label>
+                            <InputTextArea id="item-remarks"
+                                           @bind-Value="_item.Remarks" />
+
+                            <div class="page-actions">
+                                <button type="submit">Save item</button>
+                                <button type="button"
+                                        @onclick="ResetItemForm">
+                                    Cancel edit
+                                </button>
+                            </div>
+                        </EditForm>
+                    }
+                    else if (_availableItems.Count > 0)
+                    {
+                        <h3>Add PO item</h3>
+
+                        <EditForm Model="_item"
+                                  OnValidSubmit="AddItemAsync"
+                                  class="form-grid"
+                                  Context="deliveryAddItemContext">
+                            <DataAnnotationsValidator />
+
+                            <label for="po-item">PO item</label>
+                            <InputSelect id="po-item"
+                                         @bind-Value="_item.PurchaseOrderItemId">
+                                <option value="@Guid.Empty">Select item</option>
+                                @foreach (var item in _availableItems)
+                                {
+                                    <option value="@item.PurchaseOrderItemId">
+                                        @item.Description · remaining @item.RemainingQuantity @item.Unit
+                                    </option>
+                                }
+                            </InputSelect>
+
+                            <label for="quantity">Quantity</label>
+                            <InputNumber id="quantity"
+                                         @bind-Value="_item.Quantity" />
+
+                            <label for="item-remarks">Remarks</label>
+                            <InputTextArea id="item-remarks"
+                                           @bind-Value="_item.Remarks" />
+
+                            <button type="submit">Add item</button>
+                        </EditForm>
+                    }
+                    else
+                    {
+                        <p>All purchase order lines are already included or fully received.</p>
+                    }
+                </Authorized>
+            </AuthorizeView>
+        }
+    </section>
+
+    @if (IsEditable && _delivery.Items.Count > 0)
+    {
+        <AuthorizeView Policy="@Permissions.Deliveries.Receive">
+            <Authorized>
+                <section class="form-section">
+                    <h2>Post receipt</h2>
+                    <p>
+                        Receiving freezes this delivery. Confirm the physical quantities
+                        against the supplier delivery note before posting.
+                    </p>
+                    <button type="button"
+                            @onclick="ReceiveAsync">
+                        Receive delivery
+                    </button>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+
+    @if (IsEditable)
+    {
+        <AuthorizeView Policy="@Permissions.Deliveries.Cancel">
+            <Authorized>
+                <section class="danger-zone">
+                    <h2>Cancel draft delivery</h2>
+                    <button type="button"
+                            class="danger-button"
+                            @onclick="CancelAsync">
+                        Cancel delivery
+                    </button>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private DeliveryDetails? _delivery;
+    private Application.Projects.ProjectDetails? _project;
+    private IReadOnlyList<AvailableDeliveryItem> _availableItems = [];
+    private readonly DeliveryFormModel _header = new();
+    private readonly DeliveryItemFormModel _item = new();
+    private Guid? _editingItemId;
+    private readonly List<string> _errors = [];
+    private string? _message;
+
+    private bool IsEditable =>
+        _project?.Status == ProjectStatus.Active &&
+        _delivery?.Status == DeliveryStatus.Draft;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _delivery = await DeliveryReader.HandleAsync(Id);
+
+        if (_delivery is null)
+        {
+            _project = null;
+            _availableItems = [];
+            return;
+        }
+
+        _project = await ProjectReader.HandleAsync(
+            _delivery.ProjectId);
+
+        _availableItems = _delivery.Status == DeliveryStatus.Draft
+            ? await AvailableItems.HandleAsync(Id)
+            : [];
+
+        _header.DeliveryNoteNumber = _delivery.DeliveryNoteNumber;
+        _header.DeliveryDate = _delivery.DeliveryDate;
+        _header.VehicleReference = _delivery.VehicleReference;
+        _header.Remarks = _delivery.Remarks;
+    }
+
+    private async Task SaveHeaderAsync()
+    {
+        ClearFeedback();
+
+        var result = await DeliveryUpdater.HandleAsync(
+            Id,
+            new UpdateDeliveryCommand(
+                _header.DeliveryNoteNumber,
+                _header.DeliveryDate,
+                _header.VehicleReference,
+                _header.Remarks));
+
+        await HandleAsync(result, "Delivery updated.");
+    }
+
+    private async Task AddItemAsync()
+    {
+        ClearFeedback();
+
+        if (_item.PurchaseOrderItemId == Guid.Empty)
+        {
+            _errors.Add("Purchase order item is required.");
+            return;
+        }
+
+        var result = await ItemAdder.HandleAsync(
+            Id,
+            new DeliveryItemCommand(
+                _item.PurchaseOrderItemId,
+                _item.Quantity,
+                _item.Remarks));
+
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        ResetItemForm();
+        _message = "Delivery item added.";
+        await LoadAsync();
+    }
+
+    private void BeginEditItem(DeliveryItemDetails item)
+    {
+        _editingItemId = item.Id;
+        _item.PurchaseOrderItemId = item.PurchaseOrderItemId;
+        _item.Quantity = item.Quantity;
+        _item.Remarks = item.Remarks;
+    }
+
+    private async Task SaveItemAsync()
+    {
+        if (_editingItemId is not Guid itemId)
+        {
+            return;
+        }
+
+        ClearFeedback();
+
+        var result = await ItemUpdater.HandleAsync(
+            Id,
+            itemId,
+            _item.Quantity,
+            _item.Remarks);
+
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        ResetItemForm();
+        _message = "Delivery item updated.";
+        await LoadAsync();
+    }
+
+    private async Task RemoveItemAsync(Guid itemId)
+    {
+        ClearFeedback();
+
+        var result = await ItemRemover.HandleAsync(
+            Id,
+            itemId);
+
+        await HandleAsync(result, "Delivery item removed.");
+    }
+
+    private async Task ReceiveAsync()
+    {
+        ClearFeedback();
+
+        var result = await DeliveryReceiver.HandleAsync(Id);
+
+        await HandleAsync(
+            result,
+            "Delivery received and frozen.");
+    }
+
+    private async Task CancelAsync()
+    {
+        ClearFeedback();
+
+        var result = await DeliveryCanceller.HandleAsync(Id);
+
+        await HandleAsync(result, "Delivery cancelled.");
+    }
+
+    private async Task HandleAsync(
+        DeliveryActionResult result,
+        string message)
+    {
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        _message = message;
+        await LoadAsync();
+    }
+
+    private void ResetItemForm()
+    {
+        _editingItemId = null;
+        _item.PurchaseOrderItemId = Guid.Empty;
+        _item.Quantity = 1m;
+        _item.Remarks = null;
+    }
+
+    private void ClearFeedback()
+    {
+        _errors.Clear();
+        _message = null;
+    }
+
+    private sealed class DeliveryFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string DeliveryNoteNumber { get; set; } = string.Empty;
+
+        public DateOnly DeliveryDate { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string? VehicleReference { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(2000)]
+        public string? Remarks { get; set; }
+    }
+
+    private sealed class DeliveryItemFormModel
+    {
+        public Guid PurchaseOrderItemId { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Range(
+            typeof(decimal),
+            "0.001",
+            "999999999999999.999")]
+        public decimal Quantity { get; set; } = 1m;
+
+        [System.ComponentModel.DataAnnotations.StringLength(1000)]
+        public string? Remarks { get; set; }
+    }
+}
