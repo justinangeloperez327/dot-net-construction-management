@@ -1,0 +1,627 @@
+@page "/payment-applications/{Id:guid}"
+@attribute [Authorize(Policy = Permissions.PaymentApplications.View)]
+@inject GetPaymentApplicationHandler PaymentApplicationReader
+@inject UpdatePaymentApplicationHandler PaymentApplicationUpdater
+@inject AddPaymentApplicationItemHandler ItemAdder
+@inject UpdatePaymentApplicationItemHandler ItemUpdater
+@inject RemovePaymentApplicationItemHandler ItemRemover
+@inject SubmitPaymentApplicationHandler PaymentApplicationSubmitter
+@inject CancelPaymentApplicationHandler PaymentApplicationCanceller
+@inject ListAvailablePaymentApplicationItemsHandler AvailableItems
+@inject ListPaymentApplicationApproversHandler ApproverList
+
+<PageTitle>Payment application</PageTitle>
+
+@if (_application is null)
+{
+    <h1>Payment application not found</h1>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <h1>@_application.ApplicationNumber</h1>
+            <p>@_application.PurchaseOrderNumber · @_application.SupplierName · @FormatStatus(_application.Status)</p>
+        </div>
+
+        <div class="page-actions">
+            <a class="button-link"
+               href="@($"/purchase-orders/{_application.PurchaseOrderId}")">
+                Purchase order
+            </a>
+
+            @if (_application.ApprovalRequestId is Guid approvalId)
+            {
+                <a class="button-link"
+                   href="@($"/approvals/{approvalId}")">
+                    Approval
+                </a>
+            }
+
+            <a href="@($"/projects/{_application.ProjectId}/payment-applications")">
+                Back to payment applications
+            </a>
+        </div>
+    </div>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_message))
+    {
+        <p class="success-message">@_message</p>
+    }
+
+    <dl class="details-grid">
+        <dt>Status</dt>
+        <dd>@FormatStatus(_application.Status)</dd>
+
+        <dt>Supplier</dt>
+        <dd>@_application.SupplierName</dd>
+
+        <dt>Application date</dt>
+        <dd>@_application.ApplicationDate.ToString("dd MMM yyyy")</dd>
+
+        <dt>Period</dt>
+        <dd>@FormatPeriod(_application.PeriodFrom, _application.PeriodTo)</dd>
+
+        <dt>Created by</dt>
+        <dd>@_application.CreatedBy</dd>
+
+        <dt>Created</dt>
+        <dd>@_application.CreatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")</dd>
+
+        <dt>Notes</dt>
+        <dd>@(_application.Notes ?? "—")</dd>
+    </dl>
+
+    @if (IsEditable)
+    {
+        <AuthorizeView Policy="@Permissions.PaymentApplications.Update">
+            <Authorized Context="authorizationState">
+                <section class="form-section">
+                    <h2>Edit payment application</h2>
+
+                    <EditForm Model="_header"
+                              OnValidSubmit="SaveHeaderAsync"
+                              class="form-grid"
+                              Context="paymentHeaderContext">
+                        <DataAnnotationsValidator />
+
+                        <label for="application-number">Application number</label>
+                        <InputText id="application-number"
+                                   @bind-Value="_header.ApplicationNumber" />
+                        <ValidationMessage For="() => _header.ApplicationNumber" />
+
+                        <label for="application-date">Application date</label>
+                        <InputDate id="application-date"
+                                   @bind-Value="_header.ApplicationDate" />
+
+                        <label for="period-from">Period from</label>
+                        <InputDate id="period-from"
+                                   @bind-Value="_header.PeriodFrom" />
+
+                        <label for="period-to">Period to</label>
+                        <InputDate id="period-to"
+                                   @bind-Value="_header.PeriodTo" />
+
+                        <label for="notes">Notes</label>
+                        <InputTextArea id="notes"
+                                       @bind-Value="_header.Notes" />
+
+                        <button type="submit">Save application</button>
+                    </EditForm>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+
+    <section class="form-section">
+        <h2>Claimed items</h2>
+
+        @if (_application.Items.Count == 0)
+        {
+            <p>No items added to this payment application.</p>
+        }
+        else
+        {
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th>Received</th>
+                        <th>Prior claims</th>
+                        <th>This claim</th>
+                        <th>Remaining</th>
+                        <th>Unit</th>
+                        <th>Unit price</th>
+                        <th>Discount %</th>
+                        <th>Tax %</th>
+                        <th>Total</th>
+                        @if (IsEditable)
+                        {
+                            <th></th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in _application.Items)
+                    {
+                        <tr>
+                            <td>@item.Description</td>
+                            <td>@item.ReceivedQuantity</td>
+                            <td>@item.PreviouslyCommittedClaimQuantity</td>
+                            <td>@item.ClaimedQuantity</td>
+                            <td>@item.RemainingClaimableQuantity</td>
+                            <td>@item.Unit</td>
+                            <td>@_application.Currency @item.UnitPrice.ToString("N4")</td>
+                            <td>@item.DiscountPercent.ToString("N2")</td>
+                            <td>@item.TaxPercent.ToString("N2")</td>
+                            <td>@_application.Currency @item.TotalAmount.ToString("N2")</td>
+                            @if (IsEditable)
+                            {
+                                <td>
+                                    <AuthorizeView Policy="@Permissions.PaymentApplications.Update">
+                                        <Authorized>
+                                            <button type="button"
+                                                    @onclick="() => BeginEditItem(item)">
+                                                Edit
+                                            </button>
+                                            <button type="button"
+                                                    class="danger-button"
+                                                    @onclick="() => RemoveItemAsync(item.Id)">
+                                                Remove
+                                            </button>
+                                        </Authorized>
+                                    </AuthorizeView>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <dl class="details-grid">
+            <dt>Gross</dt>
+            <dd>@_application.Currency @_application.GrossAmount.ToString("N2")</dd>
+            <dt>Discount</dt>
+            <dd>@_application.Currency @_application.DiscountAmount.ToString("N2")</dd>
+            <dt>Tax</dt>
+            <dd>@_application.Currency @_application.TaxAmount.ToString("N2")</dd>
+            <dt>Claimed amount</dt>
+            <dd><strong>@_application.Currency @_application.ClaimedAmount.ToString("N2")</strong></dd>
+        </dl>
+
+        @if (IsEditable)
+        {
+            <AuthorizeView Policy="@Permissions.PaymentApplications.Update">
+                <Authorized Context="authorizationState">
+                    @if (_editingItemId is Guid)
+                    {
+                        <h3>Edit claimed quantity</h3>
+
+                        <EditForm Model="_item"
+                                  OnValidSubmit="SaveItemAsync"
+                                  class="form-grid"
+                                  Context="paymentItemEditContext">
+                            <DataAnnotationsValidator />
+
+                            <label for="claimed-quantity">Claimed quantity</label>
+                            <InputNumber id="claimed-quantity"
+                                         @bind-Value="_item.ClaimedQuantity" />
+
+                            <label for="item-remarks">Remarks</label>
+                            <InputTextArea id="item-remarks"
+                                           @bind-Value="_item.Remarks" />
+
+                            <div class="page-actions">
+                                <button type="submit">Save item</button>
+                                <button type="button"
+                                        @onclick="ResetItemForm">
+                                    Cancel edit
+                                </button>
+                            </div>
+                        </EditForm>
+                    }
+                    else if (_availableItems.Count > 0)
+                    {
+                        <h3>Add claim item</h3>
+
+                        <EditForm Model="_item"
+                                  OnValidSubmit="AddItemAsync"
+                                  class="form-grid"
+                                  Context="paymentAddItemContext">
+                            <DataAnnotationsValidator />
+
+                            <label for="po-item">Received PO item</label>
+                            <InputSelect id="po-item"
+                                         @bind-Value="_item.PurchaseOrderItemId">
+                                <option value="@Guid.Empty">Select item</option>
+                                @foreach (var item in _availableItems)
+                                {
+                                    <option value="@item.PurchaseOrderItemId">
+                                        @item.Description · claimable @item.AvailableClaimQuantity @item.Unit
+                                    </option>
+                                }
+                            </InputSelect>
+
+                            <label for="claimed-quantity">Claimed quantity</label>
+                            <InputNumber id="claimed-quantity"
+                                         @bind-Value="_item.ClaimedQuantity" />
+
+                            <label for="item-remarks">Remarks</label>
+                            <InputTextArea id="item-remarks"
+                                           @bind-Value="_item.Remarks" />
+
+                            <button type="submit">Add claim item</button>
+                        </EditForm>
+                    }
+                    else
+                    {
+                        <p>No additional received quantity is available to claim.</p>
+                    }
+                </Authorized>
+            </AuthorizeView>
+        }
+    </section>
+
+    @if (IsEditable &&
+         _application.Items.Count > 0 &&
+         _application.ClaimedAmount > 0)
+    {
+        <AuthorizeView Policy="@Permissions.PaymentApplications.Submit">
+            <Authorized Context="authorizationState">
+                <section class="form-section">
+                    <h2>Submit for approval</h2>
+                    <p>
+                        Group 17 uses the reusable approval engine. Commercial
+                        certification and deductions are introduced in Group 18.
+                    </p>
+
+                    @for (var index = 0; index < _approvalSteps.Count; index++)
+                    {
+                        var stepIndex = index;
+
+                        <div class="form-grid">
+                            <label>Step @(stepIndex + 1) name</label>
+                            <input maxlength="150"
+                                   @bind="_approvalSteps[stepIndex].Name" />
+
+                            <label>Approver</label>
+                            <select @bind="_approvalSteps[stepIndex].ApproverUserId">
+                                <option value="@Guid.Empty">Select approver</option>
+                                @foreach (var approver in _approvers)
+                                {
+                                    <option value="@approver.Id">
+                                        @approver.Email
+                                    </option>
+                                }
+                            </select>
+
+                            @if (_approvalSteps.Count > 1)
+                            {
+                                <button type="button"
+                                        class="danger-button"
+                                        @onclick="() => RemoveApprovalStep(stepIndex)">
+                                    Remove step
+                                </button>
+                            }
+                        </div>
+                    }
+
+                    <div class="page-actions">
+                        <button type="button"
+                                @onclick="AddApprovalStep">
+                            Add approval step
+                        </button>
+
+                        <button type="button"
+                                @onclick="SubmitAsync">
+                            Submit payment application
+                        </button>
+                    </div>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+
+    @if (IsEditable)
+    {
+        <AuthorizeView Policy="@Permissions.PaymentApplications.Cancel">
+            <Authorized>
+                <section class="danger-zone">
+                    <h2>Cancel payment application</h2>
+                    <p>Cancelled applications remain in the commercial history.</p>
+                    <button type="button"
+                            class="danger-button"
+                            @onclick="CancelAsync">
+                        Cancel application
+                    </button>
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Application.PaymentApplications.PaymentApplicationDetails? _application;
+    private IReadOnlyList<AvailablePaymentApplicationItem> _availableItems = [];
+    private IReadOnlyList<UserDirectoryEntry> _approvers = [];
+    private readonly PaymentApplicationFormModel _header = new();
+    private readonly PaymentApplicationItemFormModel _item = new();
+    private readonly List<ApprovalStepFormModel> _approvalSteps = [new()];
+    private Guid? _editingItemId;
+    private readonly List<string> _errors = [];
+    private string? _message;
+
+    private bool IsEditable =>
+        _application?.Status is PaymentApplicationStatus.Draft
+            or PaymentApplicationStatus.Rejected;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _approvers = await ApproverList.HandleAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _application = await PaymentApplicationReader.HandleAsync(Id);
+
+        if (_application is null)
+        {
+            _availableItems = [];
+            return;
+        }
+
+        _availableItems = IsEditable
+            ? await AvailableItems.HandleAsync(Id)
+            : [];
+
+        _header.ApplicationNumber = _application.ApplicationNumber;
+        _header.ApplicationDate = _application.ApplicationDate;
+        _header.PeriodFrom = _application.PeriodFrom;
+        _header.PeriodTo = _application.PeriodTo;
+        _header.Notes = _application.Notes;
+    }
+
+    private async Task SaveHeaderAsync()
+    {
+        ClearFeedback();
+
+        var result = await PaymentApplicationUpdater.HandleAsync(
+            Id,
+            new UpdatePaymentApplicationCommand(
+                _header.ApplicationNumber,
+                _header.ApplicationDate,
+                _header.PeriodFrom,
+                _header.PeriodTo,
+                _header.Notes));
+
+        await HandleAsync(result, "Payment application updated.");
+    }
+
+    private async Task AddItemAsync()
+    {
+        ClearFeedback();
+
+        if (_item.PurchaseOrderItemId == Guid.Empty)
+        {
+            _errors.Add("Purchase order item is required.");
+            return;
+        }
+
+        var result = await ItemAdder.HandleAsync(
+            Id,
+            new PaymentApplicationItemCommand(
+                _item.PurchaseOrderItemId,
+                _item.ClaimedQuantity,
+                _item.Remarks));
+
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        ResetItemForm();
+        _message = "Claim item added.";
+        await LoadAsync();
+    }
+
+    private void BeginEditItem(
+        PaymentApplicationItemDetails item)
+    {
+        _editingItemId = item.Id;
+        _item.PurchaseOrderItemId = item.PurchaseOrderItemId;
+        _item.ClaimedQuantity = item.ClaimedQuantity;
+        _item.Remarks = item.Remarks;
+    }
+
+    private async Task SaveItemAsync()
+    {
+        if (_editingItemId is not Guid itemId)
+        {
+            return;
+        }
+
+        ClearFeedback();
+
+        var result = await ItemUpdater.HandleAsync(
+            Id,
+            itemId,
+            _item.ClaimedQuantity,
+            _item.Remarks);
+
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        ResetItemForm();
+        _message = "Claim item updated.";
+        await LoadAsync();
+    }
+
+    private async Task RemoveItemAsync(Guid itemId)
+    {
+        ClearFeedback();
+
+        var result = await ItemRemover.HandleAsync(
+            Id,
+            itemId);
+
+        await HandleAsync(result, "Claim item removed.");
+    }
+
+    private async Task SubmitAsync()
+    {
+        ClearFeedback();
+
+        if (_approvalSteps.Any(step =>
+                string.IsNullOrWhiteSpace(step.Name) ||
+                step.ApproverUserId == Guid.Empty))
+        {
+            _errors.Add(
+                "Every approval step requires a name and approver.");
+            return;
+        }
+
+        var result = await PaymentApplicationSubmitter.HandleAsync(
+            Id,
+            new SubmitPaymentApplicationCommand(
+                _approvalSteps
+                    .Select(step => new ApprovalStepInput(
+                        step.Name,
+                        step.ApproverUserId))
+                    .ToArray()));
+
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        _message = "Payment application submitted for approval.";
+        await LoadAsync();
+    }
+
+    private async Task CancelAsync()
+    {
+        ClearFeedback();
+
+        var result = await PaymentApplicationCanceller.HandleAsync(Id);
+
+        await HandleAsync(
+            result,
+            "Payment application cancelled.");
+    }
+
+    private async Task HandleAsync(
+        PaymentApplicationActionResult result,
+        string message)
+    {
+        if (!result.Succeeded)
+        {
+            _errors.AddRange(result.Errors);
+            return;
+        }
+
+        _message = message;
+        await LoadAsync();
+    }
+
+    private void AddApprovalStep()
+    {
+        _approvalSteps.Add(new ApprovalStepFormModel());
+    }
+
+    private void RemoveApprovalStep(int index)
+    {
+        if (_approvalSteps.Count > 1)
+        {
+            _approvalSteps.RemoveAt(index);
+        }
+    }
+
+    private void ResetItemForm()
+    {
+        _editingItemId = null;
+        _item.PurchaseOrderItemId = Guid.Empty;
+        _item.ClaimedQuantity = 1m;
+        _item.Remarks = null;
+    }
+
+    private void ClearFeedback()
+    {
+        _errors.Clear();
+        _message = null;
+    }
+
+    private static string FormatPeriod(
+        DateOnly? periodFrom,
+        DateOnly? periodTo)
+    {
+        if (periodFrom is null && periodTo is null)
+        {
+            return "—";
+        }
+
+        return $"{periodFrom?.ToString("dd MMM yyyy") ?? "—"} to {periodTo?.ToString("dd MMM yyyy") ?? "—"}";
+    }
+
+    private static string FormatStatus(
+        PaymentApplicationStatus status) =>
+        status == PaymentApplicationStatus.PendingApproval
+            ? "Pending approval"
+            : status.ToString();
+
+    private sealed class PaymentApplicationFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string ApplicationNumber { get; set; } = string.Empty;
+
+        public DateOnly ApplicationDate { get; set; }
+
+        public DateOnly? PeriodFrom { get; set; }
+
+        public DateOnly? PeriodTo { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(2000)]
+        public string? Notes { get; set; }
+    }
+
+    private sealed class PaymentApplicationItemFormModel
+    {
+        public Guid PurchaseOrderItemId { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Range(
+            typeof(decimal),
+            "0.001",
+            "999999999999999.999")]
+        public decimal ClaimedQuantity { get; set; } = 1m;
+
+        [System.ComponentModel.DataAnnotations.StringLength(1000)]
+        public string? Remarks { get; set; }
+    }
+
+    private sealed class ApprovalStepFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+
+        public Guid ApproverUserId { get; set; }
+    }
+}

@@ -3,6 +3,7 @@ using Application.Clients;
 using Application.DailyReports;
 using Application.Deliveries;
 using Application.Documents;
+using Application.PaymentApplications;
 using Application.Projects;
 using Application.PurchaseOrders;
 using Application.PurchaseRequests;
@@ -121,6 +122,21 @@ public static class DependencyInjection
         services.AddScoped<GetDeliveryHandler>();
         services.AddScoped<ListDeliveriesHandler>();
         services.AddScoped<ListAvailableDeliveryItemsHandler>();
+
+        services.AddScoped<CreatePaymentApplicationHandler>();
+        services.AddScoped<UpdatePaymentApplicationHandler>();
+        services.AddScoped<AddPaymentApplicationItemHandler>();
+        services.AddScoped<UpdatePaymentApplicationItemHandler>();
+        services.AddScoped<RemovePaymentApplicationItemHandler>();
+        services.AddScoped<SubmitPaymentApplicationHandler>();
+        services.AddScoped<CancelPaymentApplicationHandler>();
+        services.AddScoped<GetPaymentApplicationHandler>();
+        services.AddScoped<ListPaymentApplicationsHandler>();
+        services.AddScoped<ListAvailablePaymentApplicationItemsHandler>();
+        services.AddScoped<ListPaymentApplicationApproversHandler>();
+        services.AddScoped<
+            IApprovalSubjectOutcomeHandler,
+            PaymentApplicationApprovalOutcomeHandler>();
 
         return services;
     }

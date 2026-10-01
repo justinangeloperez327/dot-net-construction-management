@@ -3,6 +3,7 @@ using Domain.Clients;
 using Domain.DailyReports;
 using Domain.Deliveries;
 using Domain.Documents;
+using Domain.PaymentApplications;
 using Domain.Projects;
 using Domain.PurchaseOrders;
 using Domain.PurchaseRequests;
@@ -71,6 +72,12 @@ public sealed class ApplicationDbContext(
 
     public DbSet<DeliveryItem> DeliveryItems =>
         Set<DeliveryItem>();
+
+    public DbSet<PaymentApplication> PaymentApplications =>
+        Set<PaymentApplication>();
+
+    public DbSet<PaymentApplicationItem> PaymentApplicationItems =>
+        Set<PaymentApplicationItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
