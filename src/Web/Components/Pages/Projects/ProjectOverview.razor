@@ -37,6 +37,15 @@ else
                 </Authorized>
             </AuthorizeView>
 
+            <AuthorizeView Policy="@Permissions.AuditTrail.View">
+                <Authorized>
+                    <a class="button-link"
+                       href="@($"/projects/{Id}/audit-trail")">
+                        Audit trail
+                    </a>
+                </Authorized>
+            </AuthorizeView>
+
             <AuthorizeView Policy="@Permissions.DailyReports.View">
                 <Authorized>
                     <a class="button-link"

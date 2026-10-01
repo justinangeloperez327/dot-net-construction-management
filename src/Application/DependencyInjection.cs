@@ -1,4 +1,5 @@
 using Application.Approvals;
+using Application.Auditing;
 using Application.Clients;
 using Application.Commercial;
 using Application.DailyReports;
@@ -164,6 +165,9 @@ public static class DependencyInjection
         services.AddScoped<GetProcurementReportHandler>();
         services.AddScoped<GetCommercialReportHandler>();
         services.AddScoped<ExportReportCsvHandler>();
+
+        services.AddScoped<ListAuditTrailHandler>();
+        services.AddScoped<ListAuditEntityTypesHandler>();
 
         return services;
     }

@@ -1,0 +1,337 @@
+@page "/audit-trail"
+@page "/projects/{ProjectId:guid}/audit-trail"
+@attribute [Authorize(Policy = Permissions.AuditTrail.View)]
+@inject ListAuditTrailHandler AuditReader
+@inject ListAuditEntityTypesHandler EntityTypes
+@inject GetReportingProjectsHandler ProjectList
+@inject GetProjectHandler ProjectReader
+
+<PageTitle>Audit trail</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <h1>Audit trail</h1>
+        @if (_project is not null)
+        {
+            <p>@_project.ProjectNumber · @_project.Name</p>
+        }
+        else
+        {
+            <p>Immutable history of business-data changes.</p>
+        }
+    </div>
+
+    @if (_project is not null)
+    {
+        <a href="@($"/projects/{ProjectId}")">Back to project</a>
+    }
+</div>
+
+<section class="audit-filter-panel">
+    <div class="audit-filter-grid">
+        @if (ProjectId == Guid.Empty)
+        {
+            <div>
+                <label for="audit-project">Project</label>
+                <select id="audit-project"
+                        @bind="_selectedProjectId">
+                    <option value="">All projects</option>
+                    @foreach (var project in _projects)
+                    {
+                        <option value="@project.Id">
+                            @project.ProjectNumber · @project.Name
+                        </option>
+                    }
+                </select>
+            </div>
+        }
+
+        <div>
+            <label for="audit-action">Action</label>
+            <select id="audit-action" @bind="_action">
+                <option value="">All actions</option>
+                @foreach (var action in Enum.GetValues<AuditAction>())
+                {
+                    <option value="@action">@action</option>
+                }
+            </select>
+        </div>
+
+        <div>
+            <label for="audit-entity">Entity</label>
+            <select id="audit-entity" @bind="_entityType">
+                <option value="">All entities</option>
+                @foreach (var entityType in _entityTypes)
+                {
+                    <option value="@entityType">@FormatEntityType(entityType)</option>
+                }
+            </select>
+        </div>
+
+        <div>
+            <label for="audit-actor">Actor</label>
+            <input id="audit-actor"
+                   placeholder="Email contains..."
+                   @bind="_actor" />
+        </div>
+
+        <div>
+            <label for="audit-from">From date</label>
+            <InputDate id="audit-from" @bind-Value="_fromDate" />
+        </div>
+
+        <div>
+            <label for="audit-to">To date</label>
+            <InputDate id="audit-to" @bind-Value="_toDate" />
+        </div>
+    </div>
+
+    <div class="page-actions">
+        <button type="button" @onclick="ApplyFiltersAsync">
+            Apply filters
+        </button>
+
+        <button type="button"
+                class="secondary-button"
+                @onclick="ClearFiltersAsync">
+            Clear
+        </button>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <p class="validation-error">@_error</p>
+    }
+</section>
+
+@if (_result is null)
+{
+    <p>Loading audit history...</p>
+}
+else if (_result.Items.Count == 0)
+{
+    <div class="empty-state">
+        <p>No audit events match the current filters.</p>
+    </div>
+}
+else
+{
+    <div class="audit-list">
+        @foreach (var item in _result.Items)
+        {
+            <article class="audit-event">
+                <div class="audit-event-heading">
+                    <div>
+                        <span class="status-chip">@item.Action</span>
+                        <strong>@FormatEntityType(item.EntityType)</strong>
+                        <code>@item.EntityId</code>
+                    </div>
+
+                    <time datetime="@item.OccurredAt.ToString("O")">
+                        @item.OccurredAt.ToLocalTime().ToString("dd MMM yyyy HH:mm:ss")
+                    </time>
+                </div>
+
+                <div class="audit-meta">
+                    <span>
+                        <strong>Actor:</strong>
+                        @item.Actor
+                    </span>
+
+                    @if (item.ProjectId is Guid projectId)
+                    {
+                        <span>
+                            <strong>Project:</strong>
+                            <a href="@($"/projects/{projectId}/audit-trail")">
+                                @projectId
+                            </a>
+                        </span>
+                    }
+                </div>
+
+                <details class="audit-changes">
+                    <summary>View property changes</summary>
+                    <pre>@PrettyJson(item.ChangesJson)</pre>
+                </details>
+            </article>
+        }
+    </div>
+
+    <div class="pagination">
+        <button type="button"
+                disabled="@(_result.Page <= 1)"
+                @onclick="PreviousPageAsync">
+            Previous
+        </button>
+
+        <span>
+            Page @_result.Page of @_result.TotalPages
+            · @_result.TotalCount total
+        </span>
+
+        <button type="button"
+                disabled="@(_result.Page >= _result.TotalPages)"
+                @onclick="NextPageAsync">
+            Next
+        </button>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Guid ProjectId { get; set; }
+
+    private Application.Projects.ProjectDetails? _project;
+    private IReadOnlyList<ReportProjectOption> _projects = [];
+    private IReadOnlyList<string> _entityTypes = [];
+    private AuditTrailResult? _result;
+
+    private Guid? _selectedProjectId;
+    private string _action = string.Empty;
+    private string _entityType = string.Empty;
+    private string _actor = string.Empty;
+    private DateOnly? _fromDate;
+    private DateOnly? _toDate;
+    private string? _error;
+    private int _page = 1;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _selectedProjectId = ProjectId == Guid.Empty
+            ? null
+            : ProjectId;
+
+        _project = ProjectId == Guid.Empty
+            ? null
+            : await ProjectReader.HandleAsync(ProjectId);
+
+        if (_projects.Count == 0)
+        {
+            _projects = await ProjectList.HandleAsync();
+        }
+
+        if (_entityTypes.Count == 0)
+        {
+            _entityTypes = await EntityTypes.HandleAsync();
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task ApplyFiltersAsync()
+    {
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task ClearFiltersAsync()
+    {
+        if (ProjectId == Guid.Empty)
+        {
+            _selectedProjectId = null;
+        }
+
+        _action = string.Empty;
+        _entityType = string.Empty;
+        _actor = string.Empty;
+        _fromDate = null;
+        _toDate = null;
+        _error = null;
+        _page = 1;
+
+        await LoadAsync();
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        _page = Math.Max(1, _page - 1);
+        await LoadAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (_result is null)
+        {
+            return;
+        }
+
+        _page = Math.Min(_result.TotalPages, _page + 1);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+
+        if (_fromDate is not null &&
+            _toDate is not null &&
+            _toDate < _fromDate)
+        {
+            _error =
+                "The audit end date cannot be before the start date.";
+            return;
+        }
+
+        AuditAction? action =
+            Enum.TryParse<AuditAction>(
+                _action,
+                ignoreCase: true,
+                out var parsedAction)
+                ? parsedAction
+                : null;
+
+        _result = await AuditReader.HandleAsync(
+            new AuditTrailQuery(
+                ProjectId == Guid.Empty
+                    ? _selectedProjectId
+                    : ProjectId,
+                action,
+                string.IsNullOrWhiteSpace(_entityType)
+                    ? null
+                    : _entityType,
+                string.IsNullOrWhiteSpace(_actor)
+                    ? null
+                    : _actor,
+                _fromDate,
+                _toDate,
+                _page));
+    }
+
+    private static string PrettyJson(string json)
+    {
+        try
+        {
+            var node = System.Text.Json.Nodes.JsonNode.Parse(json);
+
+            return node?.ToJsonString(
+                new System.Text.Json.JsonSerializerOptions
+                {
+                    WriteIndented = true
+                })
+                ?? json;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return json;
+        }
+    }
+
+    private static string FormatEntityType(string value)
+    {
+        var result = new System.Text.StringBuilder();
+
+        for (var index = 0; index < value.Length; index++)
+        {
+            if (index > 0 &&
+                char.IsUpper(value[index]) &&
+                !char.IsUpper(value[index - 1]))
+            {
+                result.Append(' ');
+            }
+
+            result.Append(value[index]);
+        }
+
+        return result.ToString();
+    }
+}

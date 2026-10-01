@@ -92,6 +92,11 @@ public static class Permissions
         public const string Export = "reports.export";
     }
 
+    public static class AuditTrail
+    {
+        public const string View = "audit_trail.view";
+    }
+
     public static class Projects
     {
         public const string View = "projects.view";
@@ -177,6 +182,7 @@ public static class Permissions
         Dashboard.View,
         Reports.View,
         Reports.Export,
+        AuditTrail.View,
         Projects.View,
         Projects.Create,
         Projects.Update,
