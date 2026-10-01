@@ -287,7 +287,7 @@ else
     [Parameter]
     public Guid Id { get; set; }
 
-    private DeliveryDetails? _delivery;
+    private Application.Deliveries.DeliveryDetails? _delivery;
     private Application.Projects.ProjectDetails? _project;
     private IReadOnlyList<AvailableDeliveryItem> _availableItems = [];
     private readonly DeliveryFormModel _header = new();
