@@ -41,3 +41,6 @@ jobs:
 
       - name: Test
         run: dotnet test CPM.slnx --configuration Release --no-build --verbosity normal
+
+      - name: Build container image
+        run: docker build --tag construction-management:ci .

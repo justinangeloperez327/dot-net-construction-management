@@ -4,20 +4,22 @@ A deployable construction project management application built with .NET 10 and 
 
 ## Current milestone
 
-Group 23 — Performance and Database Optimization
+Group 24 — Staging
 
 The application now includes:
 
-- consolidated portfolio project metrics to reduce database round trips
-- composite indexes aligned with dashboard, workflow, and reporting hot paths
-- optimized project/date/status access patterns
-- configurable SQL Server command timeout and transient retry behavior
-- HTTPS response compression, including CSV exports
-- EF Core model coverage tests for performance-critical indexes
+- a multi-stage .NET 10 container image running as a non-root user
+- persistent staging paths for uploads and Data Protection keys
+- startup validation for non-development deployment configuration
+- a dedicated `appsettings.Staging.json`
+- container smoke testing against the liveness endpoint
+- an EF Core migration bundle artifact for controlled schema updates
+- a GitHub Actions staging pipeline that publishes commit and `staging` image tags to GHCR
+- CI validation that the deployment container still builds
 
-Database tuning defaults are configured under `Database` in `appsettings.json`.
+Staging intentionally does not auto-apply database migrations from application startup. Apply the generated migration bundle once before rolling out the matching image.
 
-See `docs/performance-database-optimization.md`.
+See `docs/staging.md`.
 
 ## Build
 

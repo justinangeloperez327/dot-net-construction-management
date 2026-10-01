@@ -1,0 +1,125 @@
+name: Staging
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: staging
+  cancel-in-progress: true
+
+jobs:
+  package-staging:
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      IMAGE_NAME: ghcr.io/${{ github.repository }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore local tools
+        run: dotnet tool restore
+
+      - name: Restore
+        run: dotnet restore CPM.slnx
+
+      - name: Build
+        run: dotnet build CPM.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test CPM.slnx --configuration Release --no-build --verbosity normal
+
+      - name: Verify migration model
+        env:
+          ConnectionStrings__Database: "Server=localhost;Database=ConstructionManagement;User ID=sa;Password=NotUsedInMigrationCheck1!;TrustServerCertificate=True"
+        run: dotnet ef migrations has-pending-model-changes --project src/Infrastructure --startup-project src/Web --configuration Release --no-build
+
+      - name: Build migration bundle
+        env:
+          ConnectionStrings__Database: "Server=localhost;Database=ConstructionManagement;User ID=sa;Password=NotUsedInMigrationBundle1!;TrustServerCertificate=True"
+        run: |
+          mkdir -p artifacts
+          dotnet ef migrations bundle \
+            --project src/Infrastructure \
+            --startup-project src/Web \
+            --configuration Release \
+            --no-build \
+            --self-contained false \
+            --output artifacts/efbundle
+          chmod +x artifacts/efbundle
+
+      - name: Build staging container
+        run: |
+          docker build \
+            --pull \
+            --tag "$IMAGE_NAME:$GITHUB_SHA" \
+            --tag "$IMAGE_NAME:staging" \
+            .
+
+      - name: Smoke test staging container
+        run: |
+          docker run --detach \
+            --name construction-management-staging-smoke \
+            --publish 8080:8080 \
+            --env ASPNETCORE_ENVIRONMENT=Staging \
+            --env 'ConnectionStrings__Database=Server=127.0.0.1,1433;Database=ConstructionManagement;User ID=sa;Password=NotUsedByLiveness1!;TrustServerCertificate=True' \
+            --env 'AllowedHosts=localhost;staging.localhost' \
+            "$IMAGE_NAME:$GITHUB_SHA"
+
+          cleanup() {
+            docker logs construction-management-staging-smoke || true
+            docker rm --force construction-management-staging-smoke || true
+          }
+
+          trap cleanup EXIT
+
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error \
+              http://localhost:8080/health/live > /dev/null; then
+              exit 0
+            fi
+
+            sleep 1
+          done
+
+          exit 1
+
+      - name: Write release manifest
+        run: |
+          cat > artifacts/staging-release.json <<EOF
+          {
+            "commit": "$GITHUB_SHA",
+            "image": "$IMAGE_NAME:$GITHUB_SHA",
+            "channelImage": "$IMAGE_NAME:staging",
+            "environment": "Staging"
+          }
+          EOF
+
+      - name: Upload staging artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-release-${{ github.sha }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Publish staging images
+        run: |
+          docker push "$IMAGE_NAME:$GITHUB_SHA"
+          docker push "$IMAGE_NAME:staging"
