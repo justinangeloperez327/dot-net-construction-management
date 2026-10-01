@@ -21,6 +21,13 @@ public sealed class ProjectConfiguration
         builder.HasIndex(project => project.ProjectNumber)
             .IsUnique();
 
+        builder.HasIndex(project => new
+        {
+            project.Status,
+            project.TargetCompletionDate,
+            project.ProjectNumber
+        });
+
         builder.Property(project => project.Name)
             .HasMaxLength(200)
             .IsRequired();

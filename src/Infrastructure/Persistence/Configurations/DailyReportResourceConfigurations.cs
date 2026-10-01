@@ -85,5 +85,11 @@ public sealed class DailyReportSiteIssueConfiguration
             .IsRequired();
 
         builder.HasIndex(issue => issue.DailyReportId);
+
+        builder.HasIndex(issue => new
+        {
+            issue.Status,
+            issue.DailyReportId
+        });
     }
 }

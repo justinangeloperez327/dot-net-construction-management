@@ -42,6 +42,12 @@ public sealed class PurchaseRequestConfiguration
             request.RequestNumber
         }).IsUnique();
 
+        builder.HasIndex(request => new
+        {
+            request.Status,
+            request.ProjectId
+        });
+
         builder.HasIndex(request => request.RequestedByUserId);
 
         builder.HasIndex(request => request.ApprovalRequestId);
