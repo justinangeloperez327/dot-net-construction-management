@@ -1,6 +1,7 @@
 using Domain.Approvals;
 using Domain.Clients;
 using Domain.DailyReports;
+using Domain.Deliveries;
 using Domain.Documents;
 using Domain.Projects;
 using Domain.PurchaseOrders;
@@ -64,6 +65,12 @@ public sealed class ApplicationDbContext(
 
     public DbSet<PurchaseOrderItem> PurchaseOrderItems =>
         Set<PurchaseOrderItem>();
+
+    public DbSet<Delivery> Deliveries =>
+        Set<Delivery>();
+
+    public DbSet<DeliveryItem> DeliveryItems =>
+        Set<DeliveryItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

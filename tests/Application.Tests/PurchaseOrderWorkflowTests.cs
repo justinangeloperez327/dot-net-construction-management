@@ -373,6 +373,15 @@ public sealed class PurchaseOrderWorkflowTests
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<PurchaseOrder>>([]);
 
+        public Task<IReadOnlyList<PurchaseOrder>> ListByIdsAsync(
+            IReadOnlyCollection<Guid> purchaseOrderIds,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<PurchaseOrder>>(
+                _order is not null &&
+                purchaseOrderIds.Contains(_order.Id)
+                    ? [_order]
+                    : []);
+
         public Task<int> CountForProjectAsync(
             Guid projectId,
             PurchaseOrderStatus? status,

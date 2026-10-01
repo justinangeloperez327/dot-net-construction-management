@@ -1,0 +1,139 @@
+@page "/purchase-orders/{PurchaseOrderId:guid}/deliveries/create"
+@attribute [Authorize(Policy = Permissions.Deliveries.Create)]
+@inject GetPurchaseOrderHandler PurchaseOrderReader
+@inject GetProjectHandler ProjectReader
+@inject CreateDeliveryHandler DeliveryCreator
+@inject NavigationManager Navigation
+
+<PageTitle>Record delivery</PageTitle>
+
+@if (_order is null)
+{
+    <h1>Purchase order not found</h1>
+}
+else if (_order.Status != PurchaseOrderStatus.Approved)
+{
+    <h1>Record delivery</h1>
+    <p>Deliveries can only be recorded against an approved purchase order.</p>
+}
+else if (_project?.Status == ProjectStatus.Closed)
+{
+    <h1>Record delivery</h1>
+    <p>Deliveries cannot be recorded for a closed project.</p>
+}
+else
+{
+    <div class="page-heading">
+        <div>
+            <h1>Record delivery</h1>
+            <p>@_order.PurchaseOrderNumber · @_order.SupplierName</p>
+        </div>
+
+        <a href="@($"/purchase-orders/{PurchaseOrderId}")">
+            Back to purchase order
+        </a>
+    </div>
+
+    @if (_errors.Count > 0)
+    {
+        <div class="validation-error" role="alert">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+
+    <EditForm Model="_model"
+              OnValidSubmit="CreateAsync"
+              class="form-grid">
+        <DataAnnotationsValidator />
+
+        <label for="delivery-note">Delivery note number</label>
+        <InputText id="delivery-note"
+                   @bind-Value="_model.DeliveryNoteNumber" />
+        <ValidationMessage For="() => _model.DeliveryNoteNumber" />
+
+        <label for="delivery-date">Delivery date</label>
+        <InputDate id="delivery-date"
+                   @bind-Value="_model.DeliveryDate" />
+
+        <label for="vehicle-reference">Vehicle / transport reference</label>
+        <InputText id="vehicle-reference"
+                   @bind-Value="_model.VehicleReference" />
+
+        <label for="remarks">Remarks</label>
+        <InputTextArea id="remarks"
+                       @bind-Value="_model.Remarks" />
+
+        <button type="submit">Create draft delivery</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public Guid PurchaseOrderId { get; set; }
+
+    private Application.PurchaseOrders.PurchaseOrderDetails? _order;
+    private Application.Projects.ProjectDetails? _project;
+    private readonly DeliveryFormModel _model = new();
+    private readonly List<string> _errors = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _order = await PurchaseOrderReader.HandleAsync(
+            PurchaseOrderId);
+
+        _project = _order is null
+            ? null
+            : await ProjectReader.HandleAsync(_order.ProjectId);
+
+        if (_order is not null)
+        {
+            _model.DeliveryDate = DateOnly.FromDateTime(DateTime.Today);
+
+            if (_model.DeliveryDate < _order.OrderDate)
+            {
+                _model.DeliveryDate = _order.OrderDate;
+            }
+        }
+    }
+
+    private async Task CreateAsync()
+    {
+        _errors.Clear();
+
+        var result = await DeliveryCreator.HandleAsync(
+            new CreateDeliveryCommand(
+                PurchaseOrderId,
+                _model.DeliveryNoteNumber,
+                _model.DeliveryDate,
+                _model.VehicleReference,
+                _model.Remarks));
+
+        if (result.Succeeded &&
+            result.DeliveryId is Guid deliveryId)
+        {
+            Navigation.NavigateTo(
+                $"/deliveries/{deliveryId}");
+            return;
+        }
+
+        _errors.AddRange(result.Errors);
+    }
+
+    private sealed class DeliveryFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string DeliveryNoteNumber { get; set; } = string.Empty;
+
+        public DateOnly DeliveryDate { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string? VehicleReference { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(2000)]
+        public string? Remarks { get; set; }
+    }
+}

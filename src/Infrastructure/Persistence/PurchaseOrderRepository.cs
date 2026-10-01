@@ -78,6 +78,22 @@ public sealed class PurchaseOrderRepository(
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<PurchaseOrder>> ListByIdsAsync(
+        IReadOnlyCollection<Guid> purchaseOrderIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (purchaseOrderIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await dbContext.PurchaseOrders
+            .AsNoTracking()
+            .Include(order => order.Items)
+            .Where(order => purchaseOrderIds.Contains(order.Id))
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<int> CountForProjectAsync(
         Guid projectId,
         PurchaseOrderStatus? status,

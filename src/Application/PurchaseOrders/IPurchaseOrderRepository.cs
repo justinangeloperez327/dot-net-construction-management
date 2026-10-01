@@ -25,6 +25,10 @@ public interface IPurchaseOrderRepository
         int take,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<PurchaseOrder>> ListByIdsAsync(
+        IReadOnlyCollection<Guid> purchaseOrderIds,
+        CancellationToken cancellationToken = default);
+
     Task<int> CountForProjectAsync(
         Guid projectId,
         PurchaseOrderStatus? status,

@@ -4,6 +4,7 @@ using Application.Common.Authorization;
 using Application.Common.Files;
 using Application.Common.Persistence;
 using Application.DailyReports;
+using Application.Deliveries;
 using Application.Documents;
 using Application.Projects;
 using Application.PurchaseOrders;
@@ -108,6 +109,7 @@ public static class DependencyInjection
         services.AddScoped<ISupplierRepository, SupplierRepository>();
         services.AddScoped<IPurchaseRequestRepository, PurchaseRequestRepository>();
         services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
+        services.AddScoped<IDeliveryRepository, DeliveryRepository>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 
         var storageRoot = configuration["FileStorage:RootPath"];
