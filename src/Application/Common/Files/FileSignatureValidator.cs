@@ -52,11 +52,20 @@ public static class FileSignatureValidator
         var valid = contentType.Trim().ToLowerInvariant() switch
         {
             "image/jpeg" =>
-                signature.StartsWith(
-                    [0xFF, 0xD8, 0xFF]),
+                signature.Length >= 3 &&
+                signature[0] == 0xFF &&
+                signature[1] == 0xD8 &&
+                signature[2] == 0xFF,
             "image/png" =>
-                signature.StartsWith(
-                    [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
+                signature.Length >= 8 &&
+                signature[0] == 0x89 &&
+                signature[1] == 0x50 &&
+                signature[2] == 0x4E &&
+                signature[3] == 0x47 &&
+                signature[4] == 0x0D &&
+                signature[5] == 0x0A &&
+                signature[6] == 0x1A &&
+                signature[7] == 0x0A,
             "image/webp" =>
                 signature.Length >= 12 &&
                 signature[..4].SequenceEqual(
