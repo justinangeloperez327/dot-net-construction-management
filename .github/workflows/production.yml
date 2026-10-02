@@ -1,0 +1,179 @@
+name: Production Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version, for example v1.0.0"
+        required: true
+        type: string
+      publish_latest:
+        description: "Also publish the validated image as latest"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  release-production:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      IMAGE_NAME: ghcr.io/${{ github.repository }}
+      RELEASE_VERSION: ${{ inputs.version }}
+      PUBLISH_LATEST: ${{ inputs.publish_latest }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate release version
+        run: |
+          if [[ ! "$RELEASE_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Version must use vMAJOR.MINOR.PATCH or a prerelease suffix."
+            exit 1
+          fi
+
+          if git rev-parse -q --verify "refs/tags/$RELEASE_VERSION" > /dev/null; then
+            echo "Tag $RELEASE_VERSION already exists."
+            exit 1
+          fi
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore local tools
+        run: dotnet tool restore
+
+      - name: Restore
+        run: dotnet restore CPM.slnx
+
+      - name: Build
+        run: dotnet build CPM.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test CPM.slnx --configuration Release --no-build --verbosity normal
+
+      - name: Verify migration model
+        env:
+          ConnectionStrings__Database: "Server=localhost;Database=ConstructionManagement;User ID=sa;Password=NotUsedInMigrationCheck1!;TrustServerCertificate=True"
+        run: dotnet ef migrations has-pending-model-changes --project src/Infrastructure --startup-project src/Web --configuration Release --no-build
+
+      - name: Build migration bundle
+        env:
+          ConnectionStrings__Database: "Server=localhost;Database=ConstructionManagement;User ID=sa;Password=NotUsedInMigrationBundle1!;TrustServerCertificate=True"
+        run: |
+          mkdir -p artifacts
+          dotnet ef migrations bundle \
+            --project src/Infrastructure \
+            --startup-project src/Web \
+            --configuration Release \
+            --no-build \
+            --self-contained \
+            --target-runtime linux-x64 \
+            --output artifacts/efbundle
+          chmod +x artifacts/efbundle
+
+      - name: Build production container
+        run: |
+          docker build \
+            --pull \
+            --tag "$IMAGE_NAME:$GITHUB_SHA" \
+            --tag "$IMAGE_NAME:$RELEASE_VERSION" \
+            .
+
+          if [[ "$PUBLISH_LATEST" == "true" ]]; then
+            docker tag "$IMAGE_NAME:$GITHUB_SHA" "$IMAGE_NAME:latest"
+          fi
+
+      - name: Smoke test production container
+        run: |
+          docker run --detach \
+            --name construction-management-production-smoke \
+            --publish 8080:8080 \
+            --env ASPNETCORE_ENVIRONMENT=Production \
+            --env 'ConnectionStrings__Database=Server=127.0.0.1,1433;Database=ConstructionManagement;User ID=sa;Password=NotUsedByLiveness1!;TrustServerCertificate=True' \
+            --env 'AllowedHosts=localhost;production.example.com' \
+            "$IMAGE_NAME:$GITHUB_SHA"
+
+          cleanup() {
+            docker logs construction-management-production-smoke || true
+            docker rm --force construction-management-production-smoke || true
+          }
+
+          trap cleanup EXIT
+
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error \
+              http://localhost:8080/health/live > /dev/null; then
+              exit 0
+            fi
+
+            sleep 1
+          done
+
+          exit 1
+
+      - name: Write production release manifest
+        run: |
+          cat > artifacts/production-release.json <<EOF
+          {
+            "version": "$RELEASE_VERSION",
+            "commit": "$GITHUB_SHA",
+            "image": "$IMAGE_NAME:$GITHUB_SHA",
+            "versionImage": "$IMAGE_NAME:$RELEASE_VERSION",
+            "latestPublished": $PUBLISH_LATEST,
+            "environment": "Production"
+          }
+          EOF
+
+      - name: Upload production artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-release-${{ inputs.version }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Publish production images
+        run: |
+          docker push "$IMAGE_NAME:$GITHUB_SHA"
+          docker push "$IMAGE_NAME:$RELEASE_VERSION"
+
+          if [[ "$PUBLISH_LATEST" == "true" ]]; then
+            docker push "$IMAGE_NAME:latest"
+          fi
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          release_args=(
+            "$RELEASE_VERSION"
+            artifacts/efbundle
+            artifacts/production-release.json
+            --target "$GITHUB_SHA"
+            --title "Construction Management $RELEASE_VERSION"
+            --generate-notes
+          )
+
+          if [[ "$RELEASE_VERSION" == *-* ]]; then
+            release_args+=(--prerelease)
+          fi
+
+          gh release create "${release_args[@]}"

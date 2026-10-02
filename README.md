@@ -4,22 +4,24 @@ A deployable construction project management application built with .NET 10 and 
 
 ## Current milestone
 
-Group 24 — Staging
+Group 25 — Production Deployment
 
 The application now includes:
 
-- a multi-stage .NET 10 container image running as a non-root user
-- persistent staging paths for uploads and Data Protection keys
-- startup validation for non-development deployment configuration
-- a dedicated `appsettings.Staging.json`
-- container smoke testing against the liveness endpoint
-- an EF Core migration bundle artifact for controlled schema updates
-- a GitHub Actions staging pipeline that publishes commit and `staging` image tags to GHCR
-- CI validation that the deployment container still builds
+- a manual, versioned production release workflow
+- GitHub `production` environment gating for release approvals
+- immutable commit and versioned GHCR image tags
+- an optional `latest` production image tag
+- production-mode container smoke testing before publication
+- a self-contained Linux x64 EF Core migration bundle for controlled schema updates
+- production startup validation for database, host, and persistent storage configuration
+- a dedicated `appsettings.Production.json`
+- GitHub Release creation with the migration bundle and release manifest
+- documented deployment, verification, and rollback procedures
 
-Staging intentionally does not auto-apply database migrations from application startup. Apply the generated migration bundle once before rolling out the matching image.
+Production releases are deliberately manual. The release workflow must be dispatched from `main` with an explicit version such as `v1.0.0`.
 
-See `docs/staging.md`.
+See `docs/production-deployment.md`.
 
 ## Build
 

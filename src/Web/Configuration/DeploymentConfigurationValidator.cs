@@ -47,6 +47,14 @@ public static class DeploymentConfigurationValidator
                 "Staging AllowedHosts must include the externally reachable staging host.");
         }
 
+        if (environment.IsProduction() &&
+            allowedHosts.Length > 0 &&
+            allowedHosts.All(IsLocalHost))
+        {
+            errors.Add(
+                "Production AllowedHosts must include the externally reachable production host.");
+        }
+
         ValidateAbsolutePersistentPath(
             configuration["FileStorage:RootPath"],
             "FileStorage:RootPath",
